@@ -205,7 +205,7 @@ A change to the topology would reopen both.
 | C-01 | ✧ Statutory schedule data and register column mappings must be data-driven, not hardcoded. A change in an SSS, PhilHealth, Pag-IBIG, or BIR schedule (FR-2.3), or in the accounting office's register layout (FR-2.8, BR-41), must be satisfiable by editing reference data, without modifying source code. |
 | C-02 | All monetary values are stored in a fixed-point or decimal type. Binary floating-point types must not be used for currency (see BR-01). |
 | C-03 | The system must operate correctly with no internet connection available. |
-| C-04 | ✧ Historical payroll runs must remain reproducible: a finalized run must continue to display the figures it was accepted with — those of its bound import version — after any compensation profile version, statutory schedule, or register column mapping it referenced has been superseded. What is reproduced is a **stored** payroll, not a computation the system could repeat: the system re-derives nothing on read (FR-2.10, DR-2.2, BR-39). |
+| C-04 | Historical payroll runs must remain reproducible: a run imported from a particular register version must continue to display the figures that were imported, even if the register format or rate tables change. |
 | C-05 | The system must be operable by staff whose prior tool was Excel, with training measured under NFR-6.6. |
 
 ## 2.6 Assumptions and dependencies

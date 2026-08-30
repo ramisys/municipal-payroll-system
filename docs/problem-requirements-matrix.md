@@ -110,7 +110,7 @@ Every computation is checked by eye before the payroll can proceed, and a single
 | ID | Requirement | Type | How it removes the problem · success measure | Obj. |
 |---|---|---|---|---|
 | FR-4.1 | Pre-finalization validation report flagging exceptions: missing attendance, missing rate, zero or negative net pay, deductions exceeding gross pay, and out-of-range values. | FR | Turns step G from a full manual sweep into a review of flagged exceptions only; measured by the share of a run still requiring manual inspection. | OBJ 4 |
-| FR-4.2 | ✧ On-screen payroll register showing all employees and all payroll columns for a period, sortable and filterable. | FR | Gives the reviewer one authoritative view instead of scrolling across worksheet tabs. | OBJ 4 |
+| FR-4.2 | On-screen payroll register showing all employees and imported payroll/result columns for a period, sortable and filterable. | FR | Gives the reviewer one authoritative view instead of scrolling across worksheet tabs. | OBJ 4 |
 | FR-4.3 | ✧ Targeted correction — amend a payroll line by a recorded adjustment, or replace the run by re-importing a corrected register; unaffected lines are untouched in either path. | FR | Narrows the H → I loop to the lines actually affected instead of re-transcribing the whole payroll. Correction of a computed figure itself returns to the accounting office — see the delimitation note in §"Scope the matrix defines". | OBJ 4 |
 | FR-4.4 | Approval workflow with explicit states — Draft → For Review → Approved → Finalized — recording approver and timestamp at each transition. | FR | Makes steps J and K system-enforced and evidenced rather than an undocumented handoff. | OBJ 4 |
 | FR-4.5 | Period locking — a finalized run becomes read-only; later changes require a documented adjustment or reversal entry. | FR | Prevents silent post-approval edits, the failure an unprotected worksheet cannot guard against. | OBJ 4 · 6 |
@@ -145,7 +145,7 @@ Because entry, computation, checking, and document preparation are all manual, a
 
 | ID | Requirement | Type | How it removes the problem · success measure | Obj. |
 |---|---|---|---|---|
-| FR-6.1 | ✧ Audit trail logging every create, update, delete, import, export, approve, and sign-in action with the user account and timestamp. | FR | An error can be traced to its origin and reversed; a worksheet offers no equivalent record. | OBJ 6 |
+| FR-6.1 | Audit trail logging every create, update, delete, and approve action with the user account and timestamp. | FR | An error can be traced to its origin and reversed; a worksheet offers no equivalent record. | OBJ 6 |
 | FR-6.2 | Role-based access control separating Administrator, Payroll Officer, Approver, and Viewer permissions. | FR | Enforces separation between preparing and approving a payroll — impossible when a single shared file is the system of record. | OBJ 6 |
 | NFR-6.3 | Confirmation prompts and reversal paths for irreversible actions (finalize, void, delete). | NFR | Reduces the cost of a mis-click; verified through usability testing of each destructive action. | OBJ 6 |
 | NFR-6.4 | Database-level integrity constraints — referential integrity, unique keys, and non-null rules on payroll-critical fields. | NFR | Makes structurally invalid payroll data impossible to save, rather than something verification must catch later. | OBJ 6 |

@@ -455,7 +455,7 @@ So the exposure increased at the same moment the detection mechanism was removed
 - **AD-18** gives it a mechanism, in the same way AD-07 gave BR-01 one: the parse path has no float in it to misuse.
 - **NFR-2.12** tests it, over the same thirty employees and three periods NFR-2.7 used — but comparing stored values against the source file rather than against a manual computation, and including a seeded-alteration pass so a comparison that has silently stopped working is detected.
 
-A cent lost to a float here would now be lost silently in *both* directions: the system would neither compute the right answer nor notice that it had stored the wrong one. This is the most consequential implementation risk in the revised baseline.
+✧ A cent lost to a float here would now be lost silently and completely: there is no computation of the system's own to disagree with the stored figure, and a one-centavo parse error that is applied consistently reconciles against itself. This is the most consequential implementation risk in the revised baseline.
 
 ## 6.5 BR-26, BR-27 — audit that cannot drift from the change
 

@@ -27,7 +27,7 @@ The matrix below reads in one direction only: a problem produces requirements, a
 
 | Class | Meaning |
 |---|---|
-| **FR** — Functional | Something the system must do: a screen, a computation, a generated document. |
+| **FR** — Functional | ✧ Something the system must do: a screen, a check, a generated document. |
 | **NFR** — Non-functional | A quality the system must hold: accuracy, speed, security, usability. |
 | **DR** — Data | A structural rule about how payroll data is stored and related. |
 | **Workflow step** | The node in the client's current flowchart that the requirement replaces or automates. |

@@ -2,21 +2,24 @@
 
 **Project:** Payroll Management System
 **Document:** Requirements Analysis (Chapter I / Chapter III support)
-**Version:** 1.1
+**Version:** 1.2
 **Date:** August 30, 2026
-**Baseline:** B1 — frozen August 30, 2026 · see [baseline.md](./baseline.md)
+**Baseline:** B2 — frozen August 30, 2026 · see [baseline.md](./baseline.md)
+**Change:** [CR-01](./change-request-cr-01.md) — payroll computation retained by the accounting office
 
 | | |
 |---|---|
 | Problems identified | 6 |
-| Requirements derived | 35 (26 functional, 8 non-functional, 1 data) — one added in design review, marked ✦ |
+| Requirements derived | 37 (28 functional, 8 non-functional, 1 data) — one added in design review, marked ✦; the P2 cluster restated on the client's decision, marked ✧ |
 | Objectives traced | 6 |
 
 ---
 
 ## Introduction
 
-The client's current payroll cycle is carried out end to end by hand: employee and attendance data are re-encoded each period, computation is performed in Microsoft Excel, payslips are typed one by one, verification is done by visual inspection, and records are filed and retrieved manually. Six problems follow from this arrangement, and every one of them is a manual step a computerized payroll system can absorb.
+The client's current payroll cycle is carried out end to end by hand: employee and attendance data are re-encoded each period, computation is performed in Microsoft Excel, payslips are typed one by one, verification is done by visual inspection, and records are filed and retrieved manually. Six problems follow from this arrangement, and five of them are manual steps a computerized payroll system can absorb.
+
+The sixth is different, and this document records why. **The client has decided that the payroll computation itself stays with the accounting office** ([CR-01](./change-request-cr-01.md), August 30, 2026). The spreadsheet is not replaced. What P2 identifies, therefore, is no longer the computation — it is everything that happens to the computed figures once they leave the spreadsheet, which until now has been transcription, circulation, and filing by hand with no verification and no record. §P2 states the restated problem and the requirements that answer it.
 
 The matrix below reads in one direction only: a problem produces requirements, and each requirement carries the measure that will show it worked. No requirement appears here that is not answering a documented problem — this is what keeps the system scope defensible before the panel, and what allows Chapter IV to report results against Chapter I objectives rather than against a wish list.
 
@@ -50,23 +53,31 @@ Employee, attendance, and leave information is re-encoded by hand for every payr
 
 ---
 
-## P2 — Dependence on Excel for computation
+## P2 — ✧ Uncontrolled handling of computed payroll
 
-Payroll is computed in spreadsheets whose formulas are unprotected, uncontrolled, and copied or rebuilt each period — the computation logic lives in cells rather than in a governed system.
+Payroll is computed in spreadsheets, and the resulting figures are then transcribed, circulated, approved, and filed by hand. Nothing verifies that the register was carried forward intact, nothing records which version of it was approved, and nothing protects it from alteration afterward. A figure that is wrong when it leaves the spreadsheet, or that changes after it leaves, is not detectable by any step in the current process.
 
-**Workflow steps:** E · F · F1–F5  **Requirements:** 7  **Primary objective:** OBJ 2
+**Workflow steps:** G · H · I (intake side of the review loop)  **Requirements:** 9  **Primary objective:** OBJ 2
+
+✧ **Restated on the client's decision of August 30, 2026.** This problem was originally stated as *Dependence on Excel for computation*, and the seven requirements beneath it replaced the spreadsheet with a computation engine. The client has since decided that the accounting office continues to perform the computation. §"On restating a problem after analysis closed" below records the provenance in full; [CR-01](./change-request-cr-01.md) records the analysis behind it.
 
 **Table 2.** *Requirements derived from P2*
 
 | ID | Requirement | Type | How it removes the problem · success measure | Obj. |
 |---|---|---|---|---|
-| FR-2.1 | Computation engine for basic pay — derives regular earnings from the attendance record and the employee's compensation profile. | FR | Replaces step F1; the formula exists once in the application, not once per spreadsheet copy. | OBJ 2 |
-| FR-2.2 | Automatic computation of additional pay — overtime, night differential, holiday and rest-day premiums, and allowances, using configurable DOLE-based multipliers. | FR | Replaces step F2; premium rates are maintained as settings rather than retyped constants inside cells. | OBJ 2 |
-| FR-2.3 | Statutory deduction reference tables — SSS, PhilHealth, Pag-IBIG, and BIR withholding tax, stored as effectivity-dated bracket tables maintainable by an administrator. | FR | Replaces step F4; a contribution-table change is applied once and governs all future runs, while past runs keep the table in force at their time. | OBJ 2 |
-| FR-2.4 | Adjustments and other deductions as line items — tardiness and undertime, cash advances, loan amortizations, and retroactive corrections. | FR | Replaces step F3; every adjustment becomes an auditable record attached to the run instead of an untraceable edited cell. | OBJ 2 |
-| FR-2.5 | Automatic net pay determination — gross earnings less total deductions, computed for every employee in the run. | FR | Replaces step F5; net pay can no longer be a hand-entered figure. | OBJ 2 |
-| FR-2.6 | Period-based payroll run — create, compute, and recompute an entire cut-off in a single operation. | FR | Removes the per-employee, per-row manual pass; measured by processing time for a full period against the client's current Excel preparation time. | OBJ 2 |
-| NFR-2.7 | Computational accuracy — system output must agree with an independently verified manual computation. | NFR | 100% agreement on a validation set of at least 30 employees across three payroll periods, covering regular, overtime, leave-affected, and loan-deducted cases. | OBJ 2 · 6 |
+| FR-2.3 | ✧ Statutory reference tables for remittance reporting — SSS, PhilHealth, Pag-IBIG, and BIR schedules as effectivity-dated bracket tables, used to derive **employer shares** where the imported register does not carry them. They take no part in determining any employee's pay. | FR | Keeps the per-agency remittance reports of FR-5.3 producible regardless of what the accounting office's register carries; a contribution-table change is applied once and past runs keep the table in force at their time. | OBJ 2 · 5 |
+| FR-2.4 | ✧ Adjustments and other deductions recorded as line items — cash advances, loan amortizations, and retroactive corrections attached to the payroll line. The system records and tracks them; it does not determine their amounts. | FR | Every adjustment becomes an auditable record attached to the run instead of an untraceable edited cell or a note on a printout. | OBJ 2 |
+| FR-2.5 | ✧ Net pay integrity check — the system verifies that every imported row satisfies `net = gross − total deductions` and that every total is the sum of its own line items. | FR | A row that does not reconcile is refused before it enters the record; measured by 100% of non-reconciling rows blocked in the validation set. | OBJ 2 · 6 |
+| FR-2.6 | ✧ Period-based payroll run — create, import, and re-import an entire cut-off as one governed unit with an explicit lifecycle. | FR | One authoritative run per period and run type, replacing the circulating spreadsheet copies; measured by the absence of any second system of record for a period. | OBJ 2 |
+| FR-2.8 | ✧ Computed payroll register import — load the accounting office's completed register through a defined template and a configurable column mapping. | FR | Replaces the manual transcription of figures from the spreadsheet into forms, payslips, and reports; measured by zero payroll figures keyed by hand into the system. | OBJ 2 · 3 |
+| FR-2.9 | ✧ Import reconciliation and completeness — row arithmetic, file control totals, and employee matching against the master file, all checked before the register is accepted. | FR | Detects a register that is internally inconsistent or incomplete at the moment it enters, rather than after payment; measured by 100% of seeded inconsistencies refused. | OBJ 2 · 6 |
+| FR-2.10 | ✧ Import versioning — every imported register retained with its file hash, importing user, and timestamp; a corrected re-import supersedes without erasing. | FR | Makes it answerable which file produced an approved payroll, which the current process cannot answer at all. | OBJ 2 · 6 |
+| FR-2.11 | ✧ Payroll input worksheet export — the system exports employee, compensation, attendance, and leave data in the form the accounting office computes on. | FR | Prevents the re-encoding that P1 exists to eliminate from returning at a new point in the cycle; measured by the share of the accounting office's worksheet populated by export rather than keyed (target 100% of employee and attendance columns). | OBJ 2 · 1 |
+| NFR-2.12 | ✧ Transcription fidelity — every value the system stores equals the value in the source register to the centavo, and a stored run re-exports identically to what was imported. | NFR | 100% agreement on a validation set of at least 30 employees across three payroll periods, covering regular, overtime, leave-affected, and loan-deducted cases. | OBJ 2 · 6 |
+
+**Retired from this cluster by CR-01.** `FR-2.1` (basic pay computation), `FR-2.2` (additional pay computation), and `NFR-2.7` (computational accuracy) are retired: each specified a figure the system no longer derives. Their identifiers are not reused and not reassigned. `NFR-2.12` replaces `NFR-2.7` as this cluster's measurable quality — it measures faithful carriage of a figure rather than correct derivation of one, and it uses the same validation-set design so the Chapter IV sample is unchanged.
+
+**What this cluster no longer claims.** The spreadsheet formulas remain unprotected and uncontrolled, and the system does not change that. Chapter IV must not report an accuracy result for a computation the system did not perform. What it can report is that the computed register entered the record intact, reconciled, versioned, attributable, and thereafter unalterable — which is what the restated P2 asks for.
 
 ---
 
@@ -100,7 +111,7 @@ Every computation is checked by eye before the payroll can proceed, and a single
 |---|---|---|---|---|
 | FR-4.1 | Pre-finalization validation report flagging exceptions: missing attendance, missing rate, zero or negative net pay, deductions exceeding gross pay, and out-of-range values. | FR | Turns step G from a full manual sweep into a review of flagged exceptions only; measured by the share of a run still requiring manual inspection. | OBJ 4 |
 | FR-4.2 | On-screen payroll register showing all employees and computed columns for a period, sortable and filterable. | FR | Gives the reviewer one authoritative view instead of scrolling across worksheet tabs. | OBJ 4 |
-| FR-4.3 | Targeted correction and recomputation — amend an input and recompute only the affected employees. | FR | Replaces the H → I → F loop, in which one correction forces the entire payroll to be reworked. | OBJ 4 |
+| FR-4.3 | ✧ Targeted correction — amend a payroll line by a recorded adjustment, or replace the run by re-importing a corrected register; unaffected lines are untouched in either path. | FR | Narrows the H → I loop to the lines actually affected instead of re-transcribing the whole payroll. Correction of a computed figure itself returns to the accounting office — see the delimitation note in §"Scope the matrix defines". | OBJ 4 |
 | FR-4.4 | Approval workflow with explicit states — Draft → For Review → Approved → Finalized — recording approver and timestamp at each transition. | FR | Makes steps J and K system-enforced and evidenced rather than an undocumented handoff. | OBJ 4 |
 | FR-4.5 | Period locking — a finalized run becomes read-only; later changes require a documented adjustment or reversal entry. | FR | Prevents silent post-approval edits, the failure an unprotected worksheet cannot guard against. | OBJ 4 · 6 |
 
@@ -156,8 +167,8 @@ Every problem must reach at least one objective, and every objective must answer
 
 | Problem | OBJ 1 | OBJ 2 | OBJ 3 | OBJ 4 | OBJ 5 | OBJ 6 | Reqs |
 |---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-| P1 — Manual data entry | ● | | | | ○ | ○ | 6 |
-| P2 — Excel-based computation | ○ | ● | | | | ○ | 7 |
+| P1 — Manual data entry | ● | ○ | | | ○ | ○ | 6 |
+| P2 — ✧ Uncontrolled handling of computed payroll | ○ | ● | ○ | | ○ | ○ | 9 |
 | P3 — Manual payslip generation | | ○ | ● | | ○ | ○ | 5 |
 | P4 — Manual verification | | ○ | | ● | | ○ | 5 |
 | P5 — Manual record management | | | ○ | | ● | ○ | 5 |
@@ -172,7 +183,7 @@ Every problem must reach at least one objective, and every objective must answer
 These are stated in the form the manuscript needs — one objective per problem cluster, each measurable, and each with a Chapter V conclusion that can be written against it. Six objectives require exactly six conclusions, in this order.
 
 1. **OBJ 1 — Employee and payroll data management.** Develop a module that stores employee, compensation, attendance, and leave data once and makes it available to all succeeding payroll periods without re-encoding.
-2. **OBJ 2 — Automated computation.** Develop a computation module that determines basic pay, additional pay, adjustments, statutory deductions, and net pay without the use of spreadsheets.
+2. **OBJ 2 — ✧ Verified payroll intake.** Develop a module that imports the accounting office's computed payroll register, verifies its arithmetic integrity and completeness against the employee master file, and establishes it as the controlled system of record for approval, issuance, and reporting.
 3. **OBJ 3 — Payslip generation.** Develop a module that generates, exports, and reprints payslips automatically from finalized payroll runs.
 4. **OBJ 4 — Validation and approval.** Develop a module that validates payroll runs against defined exception rules and routes them through a recorded review-and-approval workflow.
 5. **OBJ 5 — Records and reporting.** Develop a module that stores payroll records for retrieval and generates payroll, remittance, and transmittal reports on demand.
@@ -184,13 +195,17 @@ These are stated in the form the manuscript needs — one objective per problem 
 
 | Count | Item |
 |---:|---|
-| 26 | Functional requirements |
+| 28 | Functional requirements |
 | 8 | Non-functional requirements |
 | 1 | Data requirement |
-| **35** | **Total requirements** |
-| 18 | Workflow steps absorbed |
+| **37** | **Total requirements** |
+| 13 | Workflow steps absorbed |
 
-Of the twenty process steps between Start and End in the client's current workflow, eighteen are absorbed by the system; only the receipt of source documents at the start and the actual release of payment to employees remain outside its boundary. Those two exclusions belong in **Scope and Delimitations**, together with any decision to leave disbursement, timekeeping hardware, or accounting integration outside this project.
+Of the twenty process steps between Start and End in the client's current workflow, **thirteen** are absorbed by the system. Seven remain outside its boundary: the receipt of source documents at the start, the actual release of payment at the end, and — following [CR-01](./change-request-cr-01.md) — steps **E, F, and F1 through F5**, the computation itself, which the accounting office continues to perform in Microsoft Excel.
+
+**Scope and Delimitations must state all seven.** The computation exclusion is the one that most changes how this project should be described: the system does not determine any employee's pay. It supplies the data the computation is performed on (FR-2.11), receives the result (FR-2.8), proves the result is internally consistent and complete (FR-2.9), and then governs everything that happens to it afterward. A correction to a computed figure is made in the accounting office's spreadsheet and re-enters through a corrected import; the system does not amend it.
+
+The remaining exclusions are unchanged: disbursement, timekeeping hardware, general-ledger integration, and employee self-service.
 
 With each problem now bound to named requirements and a measurable objective, the next section can move from what the system must do to how it will be built — the development methodology, tools, and cost framework of the operational framework.
 
@@ -202,6 +217,18 @@ With each problem now bound to named requirements and a measurable objective, th
 
 **Numbering.** Requirement IDs are stable references (class–problem.sequence). Keep them unchanged through Chapters III and IV so every implemented feature and every test result can be cited back to the problem it answers.
 
-**Revision.** This matrix carried 34 requirements when Chapter I was written. `FR-6.3` was added afterward, during design review, bringing it to 35 — the one requirement here that did not come from the client's own account of their process. It is marked ✦ throughout, and §P6 records why. No other requirement changed, and no identifier was reused or renumbered.
+**Revision.** This matrix carried 34 requirements when Chapter I was written. `FR-6.3` was added afterward, during design review, bringing it to 35 — the one requirement here that did not come from the client's own account of their process. It is marked ✦ throughout, and §P6 records why.
 
-**On revising a Chapter I artifact.** Adding to this matrix after analysis closed is defensible only when two conditions hold, and both hold here: the addition answers a problem the matrix *already* identified rather than introducing a new one, and its provenance is stated rather than absorbed. A requirement quietly inserted to match what was built would make this document a record of the system instead of a record of the analysis. Marked and dated, it stays the latter.
+A second revision followed on **August 30, 2026**, on the client's decision that the accounting office continues to perform the payroll computation. `P2` was restated, `OBJ 2` was restated, and the P2 cluster was rebuilt: `FR-2.1`, `FR-2.2`, and `NFR-2.7` retired; `FR-2.3` through `FR-2.6` reworded; `FR-2.8`, `FR-2.9`, `FR-2.10`, `FR-2.11`, and `NFR-2.12` added; `FR-4.3` reworded to match. Everything in that revision is marked ✧. The total moved from 35 to 37. **No identifier was reused, reassigned, or renumbered** — the three retired identifiers stay retired and stay named, so a reader of the earlier version can find what became of them.
+
+## On restating a problem after analysis closed
+
+This is the more serious of the two revisions, and it should be read as such. `FR-6.3` added a requirement to a problem the matrix already carried. `CR-01` removed a problem's answer and wrote a different one.
+
+Three things make it defensible, and all three must remain visible in Chapter I:
+
+1. **It is a client decision, not a design-review finding.** The scope of a capstone system is the client's to set. What the analysis owes is an accurate record of what was decided, when, and what it cost — not a matrix that reads as though the accounting office was always going to compute.
+2. **The restated P2 is still the client's own problem.** It was elicited from the same account of the same process. The original P2 named the spreadsheet as the problem; the restated P2 names what happens to the spreadsheet's output, which is a step the client described and which no requirement previously covered end to end. Nothing was invented to fill the gap the decision opened.
+3. **The cost is recorded rather than absorbed.** [CR-01](./change-request-cr-01.md) states plainly what the system stopped claiming: it no longer computes, the Excel formulas remain uncontrolled, its accuracy is bounded by a spreadsheet it cannot inspect, and Chapter IV cannot report a computational accuracy result. A revision that quietly kept `OBJ 2 — Automated computation` standing over an import module would have made this document a record of the system instead of a record of the analysis.
+
+**The honest summary for the panel.** The system's contribution is control, verification, and traceability over a payroll computed elsewhere — not the automation of the computation. That is a smaller claim than the one this matrix carried on August 30, 2026 at version 1.1, and it is the true one.

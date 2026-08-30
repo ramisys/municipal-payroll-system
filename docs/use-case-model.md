@@ -2,10 +2,11 @@
 
 **Project:** Payroll Management System
 **Document:** Use Case Diagrams and Use Case Specifications
-**Version:** 1.1
+**Version:** 1.2
 **Date:** August 30, 2026
-**Baseline:** B1 — frozen August 30, 2026 · see [baseline.md](./baseline.md)
+**Baseline:** B2 — frozen August 30, 2026 · see [baseline.md](./baseline.md)
 **Traces to:** [Functional Requirements Specification](./functional-requirements-specification.md) → [Problem-to-Requirements Matrix](./problem-requirements-matrix.md)
+**Change:** [CR-01](./change-request-cr-01.md) — payroll computation retained by the accounting office
 
 ---
 
@@ -13,11 +14,13 @@
 
 | | |
 |---|---|
-| Primary use cases | 31 |
-| Included use cases | 6 |
+| Primary use cases | 33 |
+| Included use cases | 7 |
 | Actors | 4 human, 1 supporting |
 | Diagrams | 8 |
-| Requirement items traced | 43 of 43 — 30 FR, 8 NFR, 5 DR (§7) |
+| Requirement items traced | 45 of 45 — 32 FR, 8 NFR, 5 DR (§7) |
+
+> ✧ **What changed in 1.2.** The client decided the accounting office continues to perform the payroll computation. `UC-18` is no longer *Compute payroll run* but **Import computed payroll register**; `UC-22` corrects by adjustment or re-import rather than by recomputation; `UC-I5` moved from per-line computation to remittance reporting. Two primary use cases and one included use case were added. **No actor was added** — the accounting office operates the system as the Payroll Officer.
 
 ---
 
@@ -56,7 +59,7 @@ Six behaviors are invoked by many use cases rather than pursued as goals in them
 | UC-I2 | Record audit entry | Every state-changing use case |
 | UC-I3 | Authorize action | Every use case, at every entry point |
 | UC-I4 | Evaluate exception rules | UC-18, UC-22 |
-| UC-I5 | Apply statutory schedule | UC-18 |
+| UC-I5 | Apply statutory schedule | ✧ UC-30 |
 | UC-I6 | Anchor integrity record | UC-25, UC-26, and the scheduled audit-segment close |
 
 ---
@@ -115,7 +118,7 @@ Authority is separated deliberately. The Payroll Officer prepares but cannot app
 | UC-02 | Manage user accounts | M1 | Administrator | FR-0.2 | Must |
 | UC-03 | Configure organization profile and payroll calendar | M1 | Administrator | FR-0.3 | Must |
 | UC-04 | Maintain reference data | M1 | Administrator | FR-0.4 | Must |
-| UC-05 | Maintain statutory schedules | M1 † | Administrator, Viewer (read) | FR-2.3 | Must |
+| UC-05 | ✧ Maintain statutory schedules for remittance | M1 † | Administrator, Viewer (read) | FR-2.3 | Must |
 | UC-06 | Review audit log | M1 | Administrator, Approver, Viewer | FR-6.1 | Must |
 | UC-07 | Back up and restore database | M1 † | Administrator, System Clock | NFR-5.4 | Must |
 | UC-08 | Register employee | M2 | Payroll Officer, Administrator | FR-1.1, FR-1.5 | Must |
@@ -128,11 +131,13 @@ Authority is separated deliberately. The Payroll Officer prepares but cannot app
 | UC-15 | File leave application | M3 | Payroll Officer | FR-1.4 | Must |
 | UC-16 | Approve leave application | M3 | Approver | FR-1.4 | Must |
 | UC-17 | Create payroll run | M4 ‡ | Payroll Officer | FR-2.6, FR-4.4 | Must |
-| UC-18 | Compute payroll run | M4 | Payroll Officer | FR-2.1, 2.2, 2.5, 2.6 | Must |
-| UC-19 | Encode payroll adjustment | M4 | Payroll Officer | FR-2.4 | Must |
+| UC-32 | ✧ Export payroll input worksheet | M4 | Payroll Officer | FR-2.11 | Must |
+| UC-18 | ✧ Import computed payroll register | M4 | Payroll Officer | FR-2.5, 2.6, 2.8, 2.9 | Must |
+| UC-33 | ✧ Review import history | M4 | Payroll Officer, Approver, Administrator, Viewer (read) | FR-2.10 | Must |
+| UC-19 | ✧ Record payroll adjustment | M4 | Payroll Officer | FR-2.4 | Must |
 | UC-20 | Review exception report | M5 | Payroll Officer, Approver, Administrator, Viewer (read) | FR-4.1 | Must |
 | UC-21 | Review payroll register | M5 | Payroll Officer, Approver, Viewer | FR-4.2 | Must |
-| UC-22 | Correct and recompute payroll line | M5 | Payroll Officer | FR-4.3 | Must |
+| UC-22 | ✧ Correct payroll line | M5 | Payroll Officer | FR-4.3 | Must |
 | UC-23 | Submit payroll run for review | M5 | Payroll Officer | FR-4.4 | Must |
 | UC-24 | Approve or return payroll run | M5 | Approver | FR-4.4 | Must |
 | UC-25 | Finalize payroll run | M5 | Approver | FR-4.4, FR-4.5 | Must |
@@ -143,11 +148,13 @@ Authority is separated deliberately. The Payroll Officer prepares but cannot app
 | UC-30 | Generate report | M7 | All roles | FR-5.3 | Must |
 | UC-31 | Verify payroll record integrity | M1 | Administrator, Approver, Viewer | FR-6.3 | Must |
 
-† **Administered from M1.** UC-05 maintains the statutory schedules that M4 consumes (FR-2.3) and UC-07 administers the backup that protects M7's records (NFR-5.4). Both are Administrator functions performed from the System Administration module, which is where this model places them; FRS §2.2 and Table 8 state the same split from the requirement side.
+† **Administered from M1.** ✧ UC-05 maintains the statutory schedules that **M7's remittance reports** consume (FR-2.3) and UC-07 administers the backup that protects M7's records (NFR-5.4). Both are Administrator functions performed from the System Administration module, which is where this model places them; FRS §2.2 and Table 8 state the same split from the requirement side. Before CR-01, UC-05's effect belonged to M4 because the schedules drove computation; they now drive only employer-share derivation for reporting, so the effect moved with them.
 
 ‡ **Cross-module trace.** UC-17 belongs to M4 — a run is created and cancelled from the payroll-run screen. Its A2 cancel flow is a transition in the FR-4.4 approval lifecycle, which FRS Table 8 places in M5, so the use case traces to a requirement outside its own module. The module is where the work is done; the requirement is what the work satisfies, and here they differ by design.
 
-**Actor lists follow the FR-6.2 permission matrix.** Where a role appears as `(read)` it may open and export the use case's output but performs none of its state-changing steps. The Administrator's presence on UC-08 through UC-12 and UC-20 is a maintenance and support capability, not a payroll one: AC-6.2.4 still forbids the Administrator from creating, computing, or approving a payroll run.
+**Actor lists follow the FR-6.2 permission matrix.** Where a role appears as `(read)` it may open and export the use case's output but performs none of its state-changing steps. The Administrator's presence on UC-08 through UC-12, UC-20, and UC-33 is a maintenance and support capability, not a payroll one: ✧ AC-6.2.4 still forbids the Administrator from creating a payroll run, importing a register into one, or approving one.
+
+✧ **On the accounting office and the Payroll Officer.** CR-01 moved payroll computation to the accounting office but added no actor. The accounting office performs its computation **outside the system entirely**, in Microsoft Excel, and appears in this model only as the recipient of UC-32's worksheet and the source of UC-18's register. When a member of that office operates the system — exporting, importing, correcting, submitting — they do so as the **Payroll Officer**, holding that role's permissions and appearing in the audit trail under their own account (BR-30, NFR-6.5). No use case has an "Accounting Officer" actor because no system function is performed by one.
 
 **Table 2.** *Included use cases*
 
@@ -156,9 +163,10 @@ Authority is separated deliberately. The Payroll Officer prepares but cannot app
 | UC-I1 | Validate data entry | FR-1.5 | Invoked on every save of user-entered data |
 | UC-I2 | Record audit entry | FR-6.1 | Invoked in the same transaction as every state change |
 | UC-I3 | Authorize action | FR-6.2 | Invoked at every function entry point |
-| UC-I4 | Evaluate exception rules | FR-4.1 | Invoked at the end of every computation |
-| UC-I5 | Apply statutory schedule | FR-2.3 | Invoked per payroll line during computation |
+| UC-I4 | ✧ Evaluate exception rules | FR-4.1 | Invoked at the end of every import, and in its export-time subset at every worksheet export |
+| UC-I5 | ✧ Apply statutory schedule | FR-2.3 | ✧ Invoked per agency when a remittance report needs an employer share the register did not carry — **not** per payroll line, and never for an employee-share figure |
 | UC-I6 | Anchor integrity record | FR-6.3 | Invoked when a record becomes immutable — UC-25, UC-26, and audit-segment close |
+| UC-I7 | ✧ Reconcile imported register | FR-2.9 | Invoked by UC-18 on every import, before any payroll line is written |
 
 ---
 
@@ -340,36 +348,56 @@ The Administrator is associated with UC-08 through UC-12 because FR-6.2 grants t
 ```mermaid
 flowchart LR
     PO["Payroll Officer"]
+    VW["Viewer"]
+    ACC["Accounting office
+    (outside the system)"]
 
     subgraph SYS["Payroll Management System — M4"]
         direction TB
         UC17(["UC-17 Create payroll run"])
-        UC18(["UC-18 Compute payroll run"])
-        UC19(["UC-19 Encode payroll adjustment"])
+        UC32(["UC-32 Export payroll
+        input worksheet"])
+        UC18(["UC-18 Import computed
+        payroll register"])
+        UC33(["UC-33 Review import history"])
+        UC19(["UC-19 Record payroll adjustment"])
+        I7(["UC-I7 Reconcile
+        imported register"])
         I4(["UC-I4 Evaluate exception rules"])
-        I5(["UC-I5 Apply statutory schedule"])
     end
 
     PO --- UC17
+    PO --- UC32
     PO --- UC18
+    PO --- UC33
     PO --- UC19
+    VW -.->|read| UC33
 
-    UC17 -.->|include| UC18
-    UC18 -.->|include| I5
+    UC17 -.->|include| UC32
+    UC18 -.->|include| I7
     UC18 -.->|include| I4
     UC19 -.->|extend| UC18
 
+    UC32 ==>|worksheet| ACC
+    ACC ==>|computed register| UC18
+
     classDef actor fill:#ffffff,stroke:#333,stroke-width:1px,color:#111;
+    classDef ext fill:#f6f1e8,stroke:#8A5A12,stroke-width:2px,stroke-dasharray:4 3,color:#111;
     classDef uc fill:#eef3f1,stroke:#0F6154,stroke-width:1px,color:#111;
     classDef inc fill:#f6f1e8,stroke:#8A5A12,stroke-width:1px,color:#111;
-    class PO actor;
-    class UC17,UC18,UC19 uc;
-    class I4,I5 inc;
+    class PO,VW actor;
+    class ACC ext;
+    class UC17,UC32,UC18,UC33,UC19 uc;
+    class I4,I7 inc;
 ```
 
-**Figure 5.** *M4 Payroll Computation*
+**Figure 5.** *✧ M4 Payroll Intake*
 
-UC-19 extends UC-18 because an adjustment is occasional, not part of every computation; when one is encoded, the run must be recomputed for it to take effect.
+✧ **This figure changed more than any other in the model, and one element in it is new in kind.** The **accounting office** is drawn outside the system boundary with heavy dashed edges, because it is neither an actor nor a use case: it is a process step that happens in Microsoft Excel, between two system functions, and no permission, screen, or audit entry belongs to it. Drawing it is a deliberate departure from strict UML — the alternative was a diagram in which a worksheet leaves UC-32 and a register arrives at UC-18 with nothing between them, which would hide the single most important fact about this system's boundary.
+
+UC-17 includes UC-32: a run is created and its input worksheet exported in the same operation, because a run with no worksheet has nothing for the accounting office to work from. UC-18 includes UC-I7 — no register is written to a payroll line before it reconciles — and UC-I4, so exceptions are raised on every import. UC-19 still extends UC-18 because an adjustment is occasional rather than part of every intake; unlike baseline B1, an adjustment no longer triggers a recomputation, since there is none to trigger. It is recorded alongside the imported lines and shown separately (FR-2.4).
+
+**UC-I5 no longer appears here.** It applied a statutory schedule per payroll line during computation. It now derives employer shares for remittance reports and belongs to M7, where Figure 8 draws it.
 
 ## 4.5 M5 — Validation and Approval
 
@@ -384,8 +412,8 @@ flowchart LR
         direction TB
         UC20(["UC-20 Review exception report"])
         UC21(["UC-21 Review payroll register"])
-        UC22(["UC-22 Correct and
-        recompute payroll line"])
+        UC22(["UC-22 Correct
+        payroll line"])
         UC23(["UC-23 Submit payroll run
         for review"])
         UC24(["UC-24 Approve or return
@@ -485,12 +513,24 @@ flowchart TD
     C -->|Yes| D["UC-14 Encode attendance exception"]
     D --> E
     C -->|No| E["UC-17 Create payroll run"]
-    E --> F["UC-18 Compute payroll run"]
-    F --> G["UC-20 Review exception report"]
+    E --> X1["UC-32 Export payroll
+    input worksheet"]
+    X1 --> X2["Accounting office
+    computes in Excel"]
+    X2 --> F["UC-18 Import computed
+    payroll register"]
+    F --> R{"Register
+    reconciles?
+    UC-I7"}
+    R -->|No — refused| X2
+    R -->|Yes| G["UC-20 Review exception report"]
     G --> H{"Blocking
     exceptions?"}
-    H -->|Yes| I["UC-22 Correct and recompute payroll line"]
-    I --> G
+    H -->|Yes| I["UC-22 Correct payroll line"]
+    I --> I2{"Computed figure
+    wrong?"}
+    I2 -->|Yes| X2
+    I2 -->|"No — omission"| G
     H -->|No| J["UC-21 Review payroll register"]
     J --> K["UC-23 Submit payroll run for review"]
     K --> L["UC-24 Approve or return payroll run"]
@@ -504,14 +544,22 @@ flowchart TD
     classDef step fill:#eef3f1,stroke:#0F6154,stroke-width:1px,color:#111;
     classDef gate fill:#f6f1e8,stroke:#8A5A12,stroke-width:1px,color:#111;
     classDef ext fill:#ffffff,stroke:#666,stroke-width:1px,stroke-dasharray:4 3,color:#111;
-    class B,D,E,F,G,I,J,K,L,M,N,O step;
-    class C,H gate;
+    classDef out fill:#f6f1e8,stroke:#8A5A12,stroke-width:2px,stroke-dasharray:4 3,color:#111;
+    class B,D,E,X1,F,G,I,J,K,L,M,N,O step;
+    class C,H,R,I2 gate;
     class A,P ext;
+    class X2 out;
 ```
 
-**Figure 8.** *Payroll cycle — use case sequence for one pay period*
+**Figure 8.** *✧ Payroll cycle — use case sequence for one pay period*
 
-Compare this with the client's current flowchart. The manual review, computation, and correction loop that ran through every employee now runs only through the exceptions that UC-20 raises, and the payslip typing step is gone entirely.
+✧ **Read this figure against the version in baseline B1, and against the client's current flowchart.** Three things changed, and they are the whole of CR-01 in one picture.
+
+**One step left the system.** `Accounting office computes in Excel` is drawn in the outside style, between UC-32 and UC-18. In B1 that box was `UC-18 Compute payroll run`, inside the boundary.
+
+**Two arrows now leave and return.** The reconciliation gate refuses a register straight back to the accounting office, and a wrong computed figure found at review goes back the same way. Neither loop existed in B1, because a correction never had to leave the system. This is cost **C4** drawn rather than described.
+
+**What still holds.** The manual review loop that ran through every employee still runs only through the exceptions UC-20 raises; the payslip typing step is still gone; the approval, finalization, payslip, and reporting sequence is untouched. Against the client's current flowchart, thirteen of twenty steps are still absorbed — five fewer than B1 claimed, and the matrix's scope table now says so.
 
 ---
 
@@ -873,7 +921,7 @@ Compare this with the client's current flowchart. The manual review, computation
 
 **Exception flows**
 
-- **E1 · Open payroll run.** At step 3, if the employee appears in an unfinalized run for a period after the separation date, the system warns and requires the run to be recomputed.
+- **E1 · Open payroll run.** ✧ At step 3, if the employee appears in an unfinalized run for a period after the separation date, the system warns and requires a corrected register for that run.
 
 **Postconditions** — The employee is excluded from new runs from the period following separation, and appears unchanged in every prior run and report.
 
@@ -1157,57 +1205,61 @@ Compare this with the client's current flowchart. The manual review, computation
 
 ---
 
-### UC-18 · Compute payroll run
+### ✧ UC-18 · Import computed payroll register
 
 | | |
 |---|---|
 | **Module** | M4 · **Primary actor** Payroll Officer |
-| **Traces to** | FR-2.1, FR-2.2, FR-2.5, FR-2.6 |
-| **Priority** | Must · **Frequency** Several times per period, until clean |
-| **Includes** | UC-I5, UC-I4 · **Extended by** UC-19 |
-| **Rules** | BR-01 – BR-05, BR-11 – BR-23 |
-| **Verified by** | AC-2.1.1 – AC-2.6.5, NFR-2.7 |
+| **Traces to** | FR-2.5, FR-2.6, FR-2.8, FR-2.9 |
+| **Priority** | Must · **Frequency** Once per period when clean; several times when the register needs correction |
+| **Includes** | UC-I7, UC-I4 · **Extended by** UC-19 |
+| **Rules** | BR-01, BR-06, BR-18, BR-25, BR-37 – BR-41 |
+| **Verified by** | AC-2.5.1 – AC-2.5.5, AC-2.6.1 – AC-2.6.5, AC-2.8.1 – AC-2.8.7, AC-2.9.1 – AC-2.9.7, NFR-2.12 |
 
-**Preconditions** — A run exists in `Draft` or `Returned` state; attendance is loaded; statutory schedules are in force for the pay date.
-**Trigger** — The Payroll Officer computes or recomputes the run.
+**✧ Replaces *Compute payroll run*.** In baseline B1 this use case executed the computation of every payroll line in the fixed order of BR-13. The accounting office now performs that computation in Microsoft Excel, and this use case receives its result. The steps below are all verification; **none of them produces a figure.**
+
+**Preconditions** — A run exists in `Draft` or `Returned` state; its input worksheet was exported (UC-32); the accounting office has returned a completed register; a column mapping version exists for that register's layout (BR-41).
+**Trigger** — The Payroll Officer imports the completed register into the run.
 
 **Main success scenario**
 
-1. Payroll Officer triggers computation for the run.
-2. For each payroll line, the system executes the computation in the fixed order of BR-13:
-   a. **Basic pay** from attendance and the compensation profile, by pay basis (FR-2.1).
-   b. **Additional pay** — overtime, night differential, holiday and rest-day premiums by day classification, and allowances (FR-2.2).
-   c. **Gross pay** as the sum of all earning lines.
-   d. **Absence, tardiness, and undertime** deductions (BR-11).
-   e. **Statutory deductions** — SSS, PhilHealth, Pag-IBIG — by applying the schedule in force (UC-I5).
-   f. **Taxable compensation** and **withholding tax** (BR-19), computed after the mandatory contributions of step e.
-   g. **Loans and other deductions**, including standing items and any adjustments (FR-2.4).
-   h. **Total deductions**, then **net pay** as gross less total deductions (FR-2.5).
-3. System records on each line the components, rate version, and schedule version that produced every figure.
-4. System computes the run totals: total gross, totals by deduction type, and total net.
-5. System evaluates all exception rules (UC-I4).
-6. System reports employees computed, employees skipped, exceptions raised, and elapsed time, and records the computation (UC-I2).
+1. Payroll Officer selects the run, selects the register file, and selects the column mapping version to apply.
+2. System resolves the file's columns against the mapping and presents a preview of the resolved fields for confirmation.
+3. Payroll Officer confirms.
+4. System parses the file, reading every monetary value as a decimal string and converting it directly to the stored decimal type (BR-40, BR-01).
+5. System reconciles the register (UC-I7): row arithmetic, file control totals, employee matching, and completeness against the run's population.
+6. System writes one payroll line per register row, with its earning lines, deduction lines, and any employer-share columns the register carried, in a single transaction.
+7. System records the import as a new version — source file, SHA-256 hash, importing user, timestamp, mapping version, row count, control totals, and the reconciliation result (FR-2.10, BR-39) — and makes it the run's current version.
+8. System reduces each referenced loan account's outstanding balance by the amount deducted (BR-23).
+9. System evaluates all exception rules (UC-I4).
+10. System reports employees loaded, exceptions raised, and elapsed time, and records the import (UC-I2).
 
 **Alternate flows**
 
-- **A1 · Recompute the whole run.** The Payroll Officer recomputes a `Draft` or `Returned` run. Prior computed values are discarded and recomputed from current inputs; an unchanged run yields identical figures.
-- **A2 · Recompute selected lines.** Where only some inputs changed, the Payroll Officer recomputes only the stale lines (UC-22); unaffected lines are untouched.
-- **A3 · Employee skipped.** Where an employee has no attendance and no compensation profile, the system skips the line, leaves it uncomputed, and raises blocking exceptions EX-01 and EX-02.
+- **A1 · ✧ Superseding import.** The Payroll Officer imports a corrected register into a `Draft` or `Returned` run that already holds one. The new version supersedes the current one and replaces every payroll line; the superseded version is retained and remains viewable through UC-33 (BR-39). The system reports which lines changed between versions and which did not.
+- **A2 · ✧ Preview only.** The Payroll Officer runs steps 1 through 5 without confirming, to see whether a register would reconcile before committing to it. Nothing is written.
+- **A3 · ✧ Employer shares present.** Where the register carries employer-share columns, the system stores those values and derives none (FR-2.3).
 
 **Exception flows**
 
-- **E1 · No statutory schedule in force.** At step 2e, if no schedule covers the pay date for an agency, the system halts that line and raises blocking exception EX-05 naming the agency. Computation of remaining lines continues.
-- **E2 · No compensation profile.** At step 2a, the line is skipped and blocking exception EX-02 is raised.
-- **E3 · Deductions exceed gross.** At step 2h, the line computes but blocking exception EX-04 is raised and the line is flagged.
-- **E4 · Net pay at or below the floor.** At step 2h, blocking exception EX-03 is raised. Non-statutory deductions flagged for the floor check may be reduced or deferred to satisfy it; statutory deductions may not (BR-25).
-- **E5 · Run not in an editable state.** At step 1, computation of a run in `For Review`, `Approved`, or `Finalized` state is refused.
-- **E6 · Computation interrupted.** If the process fails partway, the system rolls back the entire computation. A run is never left half-computed.
+- **E1 · ✧ Structural failure.** At step 4, a required canonical field is unmapped, a mapped column is absent, a monetary cell is not a number, or an employee number appears on more than one row. **The file is refused in full and nothing is written.** The system reports every failure by row and column (AC-2.8.2, AC-2.8.3).
+- **E2 · ✧ Row does not reconcile.** At step 5, a row whose gross, total deductions, or net disagrees with its own line items by any amount refuses the import and raises blocking exception EX-13, naming the employee and the three figures (BR-37).
+- **E3 · ✧ Control total disagrees.** At step 5, a file control total that differs from the sum of the loaded rows refuses the import and raises blocking exception EX-14.
+- **E4 · ✧ Unmatched employee.** At step 5, a row matching no active employee in the run's population refuses the import and raises blocking exception EX-11, naming the employee number.
+- **E5 · ✧ Employee missing from the register.** At step 5, an active employee in the population absent from the register refuses the import and raises blocking exception EX-12, naming the employee. An omission is invisible to every arithmetic check, which is why it blocks.
+- **E6 · Net pay at or below the floor.** At step 9, blocking exception EX-03 is raised. **✧ It is resolvable only by a corrected import** — the system offers no path to adjust a stored figure to satisfy the floor.
+- **E7 · Deductions exceed gross.** At step 9, blocking exception EX-04 is raised on the affected line.
+- **E8 · No compensation profile.** At step 9, blocking exception EX-02 is raised for the affected employee.
+- **E9 · Run not in an editable state.** At step 1, an import into a run in `For Review`, `Approved`, or `Finalized` state is refused.
+- **E10 · Import interrupted.** If the process fails partway, the system rolls back the entire import. **A run is never left holding part of a register** — import is atomic (AC-2.8.7).
 
-**Postconditions** — Every included employee has a computed payroll line whose figures are reproducible and traceable to their inputs; the exception report is current; net pay was computed, never entered.
+**Postconditions** — Every employee in the run's population has a payroll line whose figures are exactly those of the accepted register, traceable to a named file, a named user, and a stored hash; the exception report is current; the loan balances have moved by exactly the amounts deducted.
+
+**✧ What this use case does not establish.** That the figures are correct. It establishes that they are internally consistent, complete, faithfully carried, and attributable. A register that is wrong in the spreadsheet and consistent within itself completes this use case successfully — which is the limit stated in FRS §1.2 and reported in §10.
 
 ---
 
-### UC-19 · Encode payroll adjustment
+### ✧ UC-19 · Record payroll adjustment
 
 | | |
 |---|---|
@@ -1215,11 +1267,13 @@ Compare this with the client's current flowchart. The manual review, computation
 | **Traces to** | FR-2.4 |
 | **Priority** | Must · **Frequency** Several per period |
 | **Extends** | UC-18 |
-| **Rules** | BR-22, BR-23, BR-24 |
-| **Verified by** | AC-2.4.1 – AC-2.4.4 |
+| **Rules** | BR-23, BR-24, BR-33 |
+| **Verified by** | AC-2.4.1 – AC-2.4.5 |
 
-**Preconditions** — The run is in `Draft` or `Returned` state; the payroll line exists.
-**Trigger** — A one-time earning or deduction applies to an employee for this period, or a prior period requires retroactive correction.
+**✧ Renamed from *Encode payroll adjustment*.** The change is not cosmetic: an adjustment no longer triggers a recomputation, because there is none to trigger. It is recorded **beside** the imported figures, which stay visible and unaltered.
+
+**Preconditions** — The run is in `Draft` or `Returned` state; the payroll line exists, having been imported under UC-18.
+**Trigger** — A one-time earning or deduction applies to an employee for this period that the register did not carry, or a prior period requires retroactive correction.
 
 **Main success scenario**
 
@@ -1227,20 +1281,22 @@ Compare this with the client's current flowchart. The manual review, computation
 2. Payroll Officer adds an adjustment line, selecting an earning or deduction type, entering the amount and a remark.
 3. For a retroactive correction, the Payroll Officer additionally names the period being corrected (BR-24).
 4. System validates and saves the adjustment as a discrete line, recording the user and timestamp (UC-I2).
-5. System marks the payroll line stale.
-6. Payroll Officer recomputes the line (UC-22), and the adjustment takes effect in gross or total deductions.
+5. ✧ System recalculates the payroll line's displayed totals as the sum of its imported lines and its adjustment lines. **The imported figures are not altered and remain separately visible** (AC-2.4.5).
+6. ✧ System re-evaluates the exception rules (UC-I4) against the adjusted totals.
 
 **Alternate flows**
 
-- **A1 · Remove an adjustment.** While the run is unapproved, the Payroll Officer removes an adjustment; the line is marked stale for recomputation.
+- **A1 · Remove an adjustment.** While the run is unapproved, the Payroll Officer removes an adjustment; the payroll line reverts to its imported totals.
 - **A2 · Bulk adjustment.** The same adjustment is applied to a selected group in one action, each employee receiving a discrete line.
+- **A3 · ✧ Adjustment is the wrong instrument.** Where the error is in a computed figure rather than an omission, the system directs the user to the superseding-import path instead (UC-22 step 2). An adjustment that masks a wrong computation would leave two disagreeing figures on one line.
 
 **Exception flows**
 
 - **E1 · Run not editable.** At step 2, an adjustment on an `Approved` or `Finalized` run is refused.
 - **E2 · Adjustment drives net below the floor.** At step 6, blocking exception EX-03 is raised and the line cannot be submitted until resolved.
+- **E3 · ✧ Loan over-deduction.** An adjustment against a loan account exceeding its remaining balance is refused (BR-23).
 
-**Postconditions** — The adjustment exists as an individually visible, attributable line — never an unexplained change to a total.
+**Postconditions** — The adjustment exists as an individually visible, attributable line beside the imported figures — never an unexplained change to a total, and never an overwrite of what was imported.
 
 ---
 
@@ -1273,7 +1329,7 @@ Compare this with the client's current flowchart. The manual review, computation
 
 - **A1 · No exceptions.** At step 1, the report states that all rules passed and the run may be submitted.
 - **A2 · Export.** User exports the report to PDF or Excel for offline review.
-- **A3 · Read-only review.** An Administrator or a Viewer opens the report and performs steps 1, 2, and A2 only — the report is a support and audit artifact as well as a working one, and FR-6.2 grants both roles sight of it. Steps 3 through 6 are refused: neither role may correct a source record, recompute, or acknowledge a warning, and no acknowledgment is attributable to them.
+- **A3 · Read-only review.** ✧ An Administrator or a Viewer opens the report and performs steps 1, 2, and A2 only — the report is a support and audit artifact as well as a working one, and FR-6.2 grants both roles sight of it. Steps 3 through 6 are refused: neither role may correct a source record, import a register, or acknowledge a warning, and no acknowledgment is attributable to them.
 
 **Exception flows**
 
@@ -1316,7 +1372,7 @@ Compare this with the client's current flowchart. The manual review, computation
 
 ---
 
-### UC-22 · Correct and recompute payroll line
+### ✧ UC-22 · Correct payroll line
 
 | | |
 |---|---|
@@ -1325,34 +1381,46 @@ Compare this with the client's current flowchart. The manual review, computation
 | **Priority** | Must · **Frequency** Several per period |
 | **Extends** | UC-20 |
 | **Includes** | UC-I4 |
-| **Rules** | BR-13 |
-| **Verified by** | AC-4.3.1 – AC-4.3.4 |
+| **Rules** | BR-24, BR-39 |
+| **Verified by** | AC-4.3.1 – AC-4.3.5 |
+
+**✧ Replaces *Correct and recompute payroll line*.** The system no longer computes, so it cannot recompute. Correction now takes one of three paths depending on where the error is, and the first step of this use case is deciding which.
 
 **Preconditions** — The run is in `Draft` or `Returned` state.
 **Trigger** — An exception is raised, or a review finds an incorrect figure.
 
 **Main success scenario**
 
-1. From an exception or a register line, the Payroll Officer navigates to the source record — attendance, leave, compensation profile, loan, or adjustment.
-2. Payroll Officer corrects the record (UC-09, UC-11, UC-14, UC-16, UC-19).
-3. System identifies every payroll line depending on the corrected record and marks them stale.
-4. Payroll Officer recomputes the stale lines only.
-5. System recomputes those lines in the order of BR-13, leaving all other lines untouched.
+1. From an exception or a register line, the Payroll Officer opens the payroll line and identifies where the error lies.
+2. System states which correction path applies:
+
+   | The error is in | Path |
+   |---|---|
+   | A system-held input — attendance, leave, compensation profile, loan | Correct the record, re-export the worksheet (UC-32), re-import the corrected register (UC-18 A1) |
+   | A computed figure in the register | Return it to the accounting office; re-import the corrected register (UC-18 A1) |
+   | An omission or offset that leaves the computed figures right | Record an adjustment line (UC-19) |
+
+3. Payroll Officer follows the path that applies.
+4. ✧ Where the path is a superseding import, the system replaces every payroll line and reports which lines changed between the two versions and which did not; the superseded version is retained (UC-33).
+5. ✧ Where the path is an adjustment, the system records it as an additional line. The imported figures remain visible and unaltered beside it.
 6. System re-evaluates the exception rules (UC-I4) and refreshes the report.
-7. System records the correction and the recomputation with previous and new values (UC-I2).
+7. System records the correction with previous and new values, and a superseding import with both version identifiers and the stated reason (UC-I2).
 
 **Alternate flows**
 
-- **A1 · Recompute all.** Payroll Officer recomputes the entire run instead of the stale lines. The result for unaffected employees is identical either way.
-- **A2 · Correction resolves several lines.** A change to a statutory schedule or a shared configuration marks every dependent line stale; the Payroll Officer recomputes them as a group.
+- **A1 · ✧ Several lines wrong for one reason.** A single fault in the accounting office's worksheet — a wrong multiplier, a stale rate — affects many employees at once. One corrected register resolves all of them in one import; there is no per-line correction to repeat.
+- **A2 · ✧ Correction affects a closed period.** Where the error belongs to a finalized run, it is recorded as a retroactive adjustment in the current open period and never alters the closed one (BR-24).
 
 **Exception flows**
 
-- **E1 · Run no longer editable.** At step 2, if the run has since been submitted or approved, correction is refused; the Approver must return it first (UC-24).
+- **E1 · Run no longer editable.** At step 3, if the run has since been submitted or approved, correction is refused; the Approver must return it first (UC-24).
 - **E2 · Correction raises a new exception.** At step 6, a newly raised blocking exception is reported and the run remains unsubmittable.
-- **E3 · Stale line left unrecomputed.** At submission, a stale line blocks the run and is named.
+- **E3 · ✧ In-place edit attempted.** At step 3, an attempt to type over an imported figure is refused, and the message names the path that applies instead (AC-4.3.5).
+- **E4 · ✧ Corrected register still does not reconcile.** A replacement import that fails UC-I7 is refused in full; the run keeps the version it had, and the accounting office is told exactly which check failed.
 
-**Postconditions** — The corrected employees are recomputed; every other payroll line is bit-for-bit unchanged. One correction did not require reworking the payroll.
+**Postconditions** — The error is resolved by a recorded adjustment or a retained superseding import; nothing was edited in place; the exception report is current.
+
+**✧ What this use case gave up.** In baseline B1 it replaced the client's `H → I → F` loop, in which one correction forced the whole payroll to be reworked, by recomputing only the affected employees. A wrong computed figure now leaves the system and returns to the accounting office. What survives is that the correction is bounded, recorded, attributable, and never destructive of what it replaced — and that one corrected register fixes every affected employee at once rather than one at a time. The narrowing is recorded as cost **C4** in [CR-01](./change-request-cr-01.md).
 
 ---
 
@@ -1461,7 +1529,7 @@ Compare this with the client's current flowchart. The manual review, computation
 **Exception flows**
 
 - **E1 · Run not approved.** At step 1, finalization of a run in any state other than `Approved` is refused.
-- **E2 · Edit attempted after finalization.** Any subsequent edit, delete, or recompute on the run is refused by the system, with no override available to any role.
+- **E2 · Edit attempted after finalization.** ✧ Any subsequent edit, delete, re-import, or adjustment on the run is refused by the system, with no override available to any role.
 
 **Postconditions** — The run is immutable and reproducible. Payslips may be issued. Corrections require UC-26 or a retroactive adjustment in the open period.
 
@@ -1800,24 +1868,134 @@ Compare this with the client's current flowchart. The manual review, computation
 
 ---
 
-### UC-I5 · Apply statutory schedule
+### ✧ UC-I5 · Apply statutory schedule
 
 | | |
 |---|---|
-| **Traces to** | FR-2.3 · **Included by** UC-18 |
-| **Rules** | BR-14, BR-19, BR-20 |
+| **Traces to** | FR-2.3 · **Included by** UC-30 (remittance reports) |
+| **Rules** | BR-14, BR-20 |
 | **Verified by** | AC-2.3.3 – AC-2.3.5 |
+
+**✧ Rescoped by CR-01.** This use case previously ran once per payroll line during computation and produced every employee's statutory deductions. It now runs **only when a remittance report needs an employer share the imported register did not carry**, and it produces no employee-facing figure of any kind.
 
 **Flow**
 
-1. For each agency, the system selects the schedule whose effectivity range contains the pay period's pay date (BR-14).
-2. System computes the employee share against the applicable bracket, rate, floor, ceiling, or cap, and the employer share for remittance reporting (BR-20).
-3. For withholding tax, the system first derives taxable compensation per BR-19 — gross less non-taxable earnings, less the mandatory contributions computed in step 2, less de minimis benefits within their limits — then applies the bracket schedule for the pay frequency.
-4. System stores on the payroll line which schedule version produced each deduction.
+1. ✧ For a remittance report, the system reads each payroll line's employer-share value as imported.
+2. ✧ Where that value is absent, the system selects the schedule whose effectivity range contains the pay period's pay date (BR-14) and derives the employer share from the applicable bracket, rate, floor, ceiling, or cap (BR-20).
+3. ✧ System marks the figure as **derived** rather than imported, and records which schedule version produced it.
+4. ✧ System never reads, replaces, or checks an employee-share figure, a gross pay, a taxable base, or a net pay. Those are imported values and this use case does not touch them.
 
-**Exception** — Where no schedule is in force for the pay date, the system raises blocking exception EX-05 naming the agency and halts that line.
+**Exception** — ✧ Where no schedule is in force for the pay date and the register carried no employer share, the system raises **warning** exception EX-05 naming the agency, and the remittance report is produced with that column marked unavailable. It is a warning rather than a blocking exception because it obstructs one report, not the payroll.
 
-**Postconditions** — Statutory deductions are computed from current reference data and remain reproducible after the schedule is superseded.
+**Postconditions** — ✧ Every employer share on a remittance report is present and labelled as imported or derived; a derived one names its schedule version and remains reproducible after the schedule is superseded. **No employee's pay was affected.**
+
+---
+
+### ✧ UC-32 · Export payroll input worksheet
+
+| | |
+|---|---|
+| **Module** | M4 · **Primary actor** Payroll Officer |
+| **Traces to** | FR-2.11 |
+| **Priority** | Must · **Frequency** Once per period, and again after any input correction |
+| **Included by** | UC-17 |
+| **Includes** | UC-I4 (export-time subset), UC-I2 |
+| **Rules** | BR-03, BR-04, BR-08, BR-09 |
+| **Verified by** | AC-2.11.1 – AC-2.11.5 |
+
+**✧ Added by CR-01.** This use case is what keeps single-entry true after computation moved outside. Without it the accounting office re-keys employee and attendance data from the system's screens into its own workbook every period, and P1 — the problem the system most clearly solves — returns at a new point in the cycle.
+
+**Preconditions** — A run exists in `Draft` or `Returned` state; attendance for the cut-off is loaded; leave applications covering the cut-off are approved or refused.
+**Trigger** — The Payroll Officer exports the run's input worksheet, or creates a run (UC-17), which includes this use case.
+
+**Main success scenario**
+
+1. Payroll Officer selects the run and exports its input worksheet.
+2. System evaluates the export-time subset of the exception rules (UC-I4) — EX-01 missing attendance, EX-02 missing compensation profile, EX-10 attendance outside the cut-off — so a gap is found before the accounting office computes on it rather than after.
+3. System assembles one row per employee in the run's population: employee number, name, department, position, pay basis, basic rate, and the compensation entry in force on the cut-off end date (BR-08).
+4. System adds the attendance summary for the cut-off — days present, hours worked, late minutes, undertime minutes, days absent — derived under BR-03 and BR-04, excluding dates outside the cut-off (BR-09).
+5. System adds approved leave days covering the cut-off, each marked paid or unpaid by its leave type.
+6. System adds the standing deductions and open loan balances from each employee's compensation profile as reference columns.
+7. System writes a header block naming the run, the period, the cut-off dates, and the export timestamp.
+8. System produces the spreadsheet file, with monetary and rate columns typed as numbers, and records the export (UC-I2).
+
+**Alternate flows**
+
+- **A1 · Re-export after correction.** An input is corrected (UC-09, UC-11, UC-14, UC-16) and the worksheet is exported again. The new export supersedes the previous one for the accounting office's purposes; both exports are audited.
+- **A2 · Departmental export.** The worksheet is exported for one department rather than the whole run, where the accounting office divides the work.
+
+**Exception flows**
+
+- **E1 · Blocking exception at export.** At step 2, an employee with no compensation profile or no attendance is named, and the export proceeds with that employee's row marked incomplete. The exception remains open and will block submission later — the export is not the gate, but it is the earliest warning.
+- **E2 · Run not in an editable state.** At step 1, export from an `Approved` or `Finalized` run is permitted for reference but is marked as a copy of a closed period, not an input worksheet.
+
+**Postconditions** — The accounting office holds a worksheet populated entirely from system data, with no column requiring re-keying; the export is audited and attributable.
+
+---
+
+### ✧ UC-33 · Review import history
+
+| | |
+|---|---|
+| **Module** | M4 · **Primary actor** Payroll Officer, Approver, Administrator, Viewer (read) |
+| **Traces to** | FR-2.10 |
+| **Priority** | Must · **Frequency** On review, on audit, on dispute |
+| **Includes** | UC-I3 |
+| **Rules** | BR-27, BR-39 |
+| **Verified by** | AC-2.10.1 – AC-2.10.5 |
+
+**✧ Added by CR-01.** Once payroll figures originate outside the system, *which file produced this payroll* becomes the first question an auditor asks, and no other use case can answer it.
+
+**Preconditions** — A run exists and holds at least one accepted import.
+**Trigger** — A reviewer, approver, or auditor opens a run's import history.
+
+**Main success scenario**
+
+1. User opens a payroll run and selects its import history.
+2. System lists every import version against the run, newest first: version number, source file name, SHA-256 hash, importing user, timestamp, mapping version applied, row count, control totals, and the reconciliation outcome.
+3. System marks which version is current and which are superseded.
+4. User selects a version and views its stored reconciliation result — every check performed and its outcome — exactly as recorded at import time.
+5. User may compare two versions; the system reports which payroll lines differ and by what amount.
+6. User may download the retained source file of any version.
+7. System records the access under UC-I2 where the role requires it.
+
+**Alternate flows**
+
+- **A1 · From a finalized run.** The history of a finalized run is read-only and names the single version the run was built from, together with the ledger anchor covering it (UC-31).
+- **A2 · Verify the retained file.** The user recomputes the hash of the downloaded source file and compares it with the stored value, establishing that the retained file is the one that was imported.
+
+**Exception flows**
+
+- **E1 · Insufficient permission.** A role without sight of payroll outputs is refused at step 1 (UC-I3, BR-29).
+- **E2 · Retained file unavailable.** Where a source file cannot be read from storage, the system reports it plainly and does not present the version as verifiable. The version's metadata and reconciliation result remain visible.
+
+**Postconditions** — The provenance of every figure in the run is established: a named file, a named hash, a named user, a named time, and a recorded reconciliation.
+
+---
+
+### ✧ UC-I7 · Reconcile imported register
+
+| | |
+|---|---|
+| **Traces to** | FR-2.9 · **Included by** UC-18 |
+| **Rules** | BR-06, BR-18, BR-37, BR-38 |
+| **Verified by** | AC-2.9.1 – AC-2.9.7 |
+
+**✧ Added by CR-01.** This is the single point at which the system decides whether to trust a register. It runs before any payroll line is written, and its refusal is absolute — there is no partial acceptance and no override for any role.
+
+**Flow**
+
+1. **Row arithmetic.** For every row: gross pay equals the sum of its earning columns; total deductions equals the sum of its deduction columns; net pay equals gross less total deductions. Each is compared to the centavo with no tolerance (BR-37, BR-18).
+2. **Control totals.** Where the register carries them, each file control total is compared with the sum of the corresponding values across all loaded rows (BR-37).
+3. **Employee matching.** Every row is matched to exactly one active employee in the run's population by employee number (BR-06, BR-38).
+4. **Completeness.** Every active employee in the population is confirmed present in the register (BR-38).
+5. System records the result of every check, with the values compared, against the import version (FR-2.10).
+
+**Exceptions** — A failure at step 1 raises blocking EX-13; at step 2, EX-14; at step 3, EX-11; at step 4, EX-12. **Any failure refuses the whole import**; nothing is written.
+
+**Postconditions** — Either the register is internally consistent and complete and the import proceeds, or nothing was written and the report names every check that failed.
+
+**✧ The limit of this use case.** It proves the register agrees with itself and covers everyone. It cannot prove any figure in it is right — a uniformly wrong multiplier reconciles perfectly. That limit is stated in FRS §1.2, tested against in FRS §10, and must be reported in Chapter IV rather than implied away.
 
 ---
 
@@ -1840,16 +2018,18 @@ Compare this with the client's current flowchart. The manual review, computation
 | FR-1.5 Validation at entry | UC-I1 (in UC-02, 03, 04, 08, 09, 11, 14, 15) | ✔ |
 | DR-1.6 Normalized database | *Structural — no user goal; realized by every persisting use case* | ✔ |
 | DR-2.1 Retention and reproducibility | UC-29, UC-30 (retrieval over retained data), UC-07 (backup) | ✔ |
-| DR-2.2 Version reference on computed lines | UC-18 (binds versions), UC-25 (fixes them at finalization) | ✔ |
-| DR-2.3 Decimal type for money | *Structural — enforced beneath every computing use case* | ✔ |
+| DR-2.2 Version reference on payroll lines | UC-18 (binds import and rate versions), UC-33 (exposes them), UC-25 (fixes them at finalization) | ✔ |
+| DR-2.3 Decimal type for money | *Structural — enforced beneath every persisting use case* | ✔ |
 | DR-2.4 Deletion as deactivation | UC-10, and the soft-delete rule beneath UC-02, UC-04, UC-05 | ✔ |
-| FR-2.1 Basic pay | UC-18 | ✔ |
-| FR-2.2 Additional pay | UC-18 | ✔ |
-| FR-2.3 Statutory tables | UC-05 (maintain), UC-I5 (apply) | ✔ |
+| FR-2.3 Statutory tables for remittance | UC-05 (maintain), UC-I5 (derive employer share) | ✔ |
 | FR-2.4 Adjustments | UC-19 | ✔ |
-| FR-2.5 Net pay | UC-18 | ✔ |
+| FR-2.5 Net pay integrity check | UC-18, UC-I7 | ✔ |
 | FR-2.6 Payroll run | UC-17, UC-18 | ✔ |
-| NFR-2.7 Accuracy | UC-18 (verified by parallel run) | ✔ |
+| FR-2.8 Register import | UC-18 | ✔ |
+| FR-2.9 Reconciliation and completeness | UC-I7 (in UC-18) | ✔ |
+| FR-2.10 Import versioning | UC-18 (records), UC-33 (reviews) | ✔ |
+| FR-2.11 Input worksheet export | UC-32 | ✔ |
+| NFR-2.12 Transcription fidelity | UC-18 (verified by the intake fidelity stage) | ✔ |
 | FR-3.1 Payslip generation | UC-27 | ✔ |
 | FR-3.2 Payslip layout | UC-27 | ✔ |
 | FR-3.3 Batch export | UC-27 | ✔ |
@@ -1857,7 +2037,7 @@ Compare this with the client's current flowchart. The manual review, computation
 | NFR-3.5 Turnaround | UC-27 (timed) | ✔ |
 | FR-4.1 Exception report | UC-20, UC-I4 | ✔ |
 | FR-4.2 Payroll register | UC-21 | ✔ |
-| FR-4.3 Targeted recomputation | UC-22 | ✔ |
+| FR-4.3 Targeted correction | UC-22 | ✔ |
 | FR-4.4 Approval workflow | UC-17 A2 (cancel), UC-23, UC-24, UC-25 | ✔ |
 | FR-4.5 Period locking | UC-25, UC-26 | ✔ |
 | FR-5.1 Records storage | *Structural — realized within UC-18 and UC-25* | ✔ |
@@ -1873,9 +2053,11 @@ Compare this with the client's current flowchart. The manual review, computation
 | NFR-6.5 Security controls | UC-01, UC-02 | ✔ |
 | NFR-6.6 ISO/IEC 25010 evaluation | *Verification activity, not a use case* | ✔ |
 
-**Coverage.** All 43 requirement items are reached — 30 functional, 8 gated non-functional, and 5 data. Six items — DR-1.6, DR-2.3, FR-5.1, NFR-6.4, NFR-6.6, and the structural half of DR-2.4 — have no distinct user goal and are marked as such rather than given an artificial use case. Five are structural properties realized beneath every use case; the sixth, NFR-6.6, is a verification activity in the FRS acceptance plan.
+**Coverage.** ✧ All 45 requirement items are reached — 32 functional, 8 gated non-functional, and 5 data. Six items — DR-1.6, DR-2.3, FR-5.1, NFR-6.4, NFR-6.6, and the structural half of DR-2.4 — have no distinct user goal and are marked as such rather than given an artificial use case. Five are structural properties realized beneath every use case; the sixth, NFR-6.6, is a verification activity in the FRS acceptance plan.
 
-NFR-7.1 – 7.4 are absent from this table by design. The FRS classifies them as ungated quality expectations rather than gated requirements (FRS §5), so they are outside the 42 and are not traced here.
+✧ **`FR-2.1`, `FR-2.2`, and `NFR-2.7` are absent because they no longer exist.** [CR-01](./change-request-cr-01.md) retired them; their identifiers are not reused. This table holds the identical set to FRS Table 8 — 45 items — which is the check that keeps the two documents from drifting.
+
+NFR-7.1 – 7.4 are absent from this table by design. The FRS classifies them as ungated quality expectations rather than gated requirements (FRS §5), so they are outside the 45 and are not traced here.
 
 ## 7.2 Use case to problem
 
@@ -1884,13 +2066,13 @@ NFR-7.1 – 7.4 are absent from this table by design. The FRS classifies them as
 | Problem | Use cases | Count |
 |---|---|:---:|
 | P1 Manual data entry | UC-08, 09, 10, 11, 12, 13, 14, 15, 16, I1 | 10 |
-| P2 Excel-based computation | UC-05, 17, 18, 19, I5 | 5 |
+| P2 ✧ Uncontrolled handling of computed payroll | UC-05, 17, 18, 19, 32, 33, I5, I7 | 8 |
 | P3 Manual payslip generation | UC-27, 28 | 2 |
 | P4 Manual verification | UC-17 (A2 cancel), 20, 21, 22, 23, 24, 25, 26, I4 | 8 + 1 shared |
 | P5 Manual record management | UC-07, 29, 30 | 3 |
 | P6 Risk of human error | UC-01, 02, 03, 04, 06, 31, I2, I3, I6 | 9 |
 
-Every problem originates at least two use cases. The distribution matches the matrix: P1 and P4 dominate because manual entry and manual verification are where the client's process spends most of its effort. UC-17 is counted once, under P2, and is listed against P4 only because its A2 cancel flow is a transition in the FR-4.4 approval lifecycle; the thirty-one primary use cases still sum to thirty-one.
+Every problem originates at least two use cases. The distribution matches the matrix: P1 and P4 dominate because manual entry and manual verification are where the client's process spends most of its effort. UC-17 is counted once, under P2, and is listed against P4 only because its A2 cancel flow is a transition in the FR-4.4 approval lifecycle; ✧ the thirty-three primary use cases still sum to thirty-three.
 
 ---
 
@@ -1899,5 +2081,6 @@ Every problem originates at least two use cases. The distribution matches the ma
 1. **Figures 1–8 need vector redraws** at the department's required format. The content here is authoritative; the redraw is formatting only.
 2. **The permission matrix in FRS §FR-6.2 is the companion to Figure 1.** Present them together — the actor diagram shows who exists, the matrix shows what each may do. The actor lists in Table 1 and in every specification are derived from that matrix and agree with it row for row, which is what makes the matrix testable: AC-6.2.2 requires a function absent from a role's permissions to be refused at execution, not merely hidden, and the use cases name exactly the roles the matrix admits.
 3. **Figure 8 is the strongest before-and-after evidence in the model.** Place it beside the client's existing workflow flowchart: the same cycle, with the verification loop narrowed to exceptions and the payslip typing step gone.
-4. **UC-18 is the use case to walk the panel through.** It carries the computation order, the statutory application, and six exception flows — the whole justification for replacing Excel sits in one specification.
-5. **Sequence and activity diagrams** are the natural next artifacts, drawn for UC-18, UC-24, and UC-25. The main success scenarios above are already written as numbered step sequences to make that translation direct.
+4. **✧ UC-18 is still the use case to walk the panel through, for a different reason.** It no longer carries a computation order. It carries ten exception flows, every one of which is a way a register can be wrong or incomplete, and together they are the whole of what this system does instead of computing. Present it beside Figure 5, so the accounting office's box outside the boundary is visible while the flows are read.
+5. **✧ Be explicit about what left.** A panel that read Chapter I expecting an automated computation module will ask where it went. The answer is in [CR-01](./change-request-cr-01.md) and in the matrix's restated P2: the client decided it stays with the accounting office, the objective was restated rather than quietly kept, and the system's claim is now control and verification over a payroll computed elsewhere. Say it plainly rather than letting the question be asked.
+6. **Sequence and activity diagrams** are the natural next artifacts, drawn for UC-18, UC-24, and UC-25. The main success scenarios above are already written as numbered step sequences to make that translation direct.

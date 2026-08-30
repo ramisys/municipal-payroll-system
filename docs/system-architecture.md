@@ -2,10 +2,11 @@
 
 **Project:** Payroll Management System
 **Document:** System Architecture and Deployment Design
-**Version:** 1.1
+**Version:** 1.2
 **Date:** August 30, 2026
-**Baseline:** B1 — frozen August 30, 2026 · see [baseline.md](./baseline.md)
+**Baseline:** B2 — frozen August 30, 2026 · see [baseline.md](./baseline.md)
 **Traces to:** [FRS](./functional-requirements-specification.md) → [Use Case Model](./use-case-model.md) → [Behavioral Diagrams](./behavioral-diagrams.md) → [Data Model](./data-model.md)
+**Change:** [CR-01](./change-request-cr-01.md) — payroll computation retained by the accounting office
 
 ---
 
@@ -14,12 +15,14 @@
 | | |
 |---|---|
 | Architectural layers | 4 |
-| Components specified | 35 (14 of them already named in behavioral §1.4) |
+| Components specified | 38 (17 of them already named in behavioral §1.4) |
 | Modules realized | 7 (M1 – M7, FRS §2.2) |
-| Entities persisted | 37 in 6 subject areas (data model §2) |
-| Architectural decisions | 16 (AD-01 … AD-16) |
+| Entities persisted | 39 in 6 subject areas (data model §2) |
+| Architectural decisions | 18 (AD-01 … AD-18) |
 | Diagrams | 6 |
-| Open items closed | OI-08 |
+| Open items closed | OI-08, OI-03 |
+
+> ✧ **What changed in 1.2.** `ComputationEngine` is retired; `RegisterImportService`, `ReconciliationService`, `WorksheetExportService`, and `ImportRepository` replace it. **`AD-04` and `AD-05` are re-argued from new grounds** — both were justified by NFR-2.7 and the engine, and CR-01 retired both. `AD-07` is reframed from arithmetic precision to parse precision. Two decisions are added: `AD-17` (canonical template with configurable column mapping) and `AD-18` (decimal-string parse path). §6.1 and §6.6 are rewritten.
 
 ---
 
@@ -43,11 +46,13 @@ Behavioral §1.4 names **14 participants**. Those 14 are the components the four
 |---|:---:|:---:|
 | Presentation | 8 | 1 — `Payroll Run UI` |
 | Application | 7 | 1 — `PayrollRunController` |
-| Domain | 14 | 9 |
-| Persistence | 6 | 3 |
-| **Total** | **35** | **14** |
+| Domain | ✧ 16 | ✧ 11 |
+| Persistence | ✧ 7 | ✧ 4 |
+| **Total** | **✧ 38** | **✧ 17** |
 
-No participant was renamed, merged, or given a different responsibility. The 21 additions serve use cases the behavioral document did not model — attendance import, leave, reporting, backup, the reference-data screens of M1, and the presentation and persistence ends of the integrity layer.
+✧ **One participant was retired and four added.** `ComputationEngine` is gone with the computation it performed; `RegisterImportService`, `ReconciliationService`, `WorksheetExportService`, and `ImportRepository` take its place, and all four are named in behavioral §1.4 alongside the others. Nothing else was renamed, merged, or given a different responsibility — though `StatutoryScheduleService` now serves M7 rather than M4 (§5.2).
+
+The 21 additions marked ⊕ serve use cases the behavioral document did not model — attendance import, leave, reporting, backup, the reference-data screens of M1, and the presentation and persistence ends of the integrity layer. That count is unchanged: the four new components arrived through the behavioral model, not around it.
 
 ---
 
@@ -108,7 +113,7 @@ flowchart TB
             Nginx 1.24"]
             APP["Laravel application
             PHP-FPM 8.3
-            all 35 components"]
+            all 38 components"]
             SCHED["Task scheduler
             System Clock actor
             backup, session sweep"]
@@ -190,13 +195,13 @@ flowchart TB
         transaction boundaries live here"]
     end
     subgraph L3["3 · Domain — the payroll rules"]
-        D["Services and the computation engine
-        12 services
-        BR-01 … BR-34, EX-01 … EX-10"]
+        D["Services, intake, and reconciliation
+        16 services
+        BR-01 … BR-41 live, EX-01 … EX-14"]
     end
     subgraph L4["4 · Persistence — how it is stored"]
         R["Repositories over Eloquent
-        5 repositories
+        6 repositories
         37 models, migrations, seeders"]
     end
     subgraph L5["Data"]
@@ -226,12 +231,12 @@ flowchart TB
 | Layer | Holds | Must not |
 |---|---|---|
 | **Presentation** | Screens, form markup, client-side formatting and inline validation display (UI-03, UI-05) | Contain a payroll rule. No `BR-nn` is implemented here. Client-side validation is a convenience; the authoritative check is in the domain layer |
-| **Application** | Controllers, request validation, policy checks, **transaction boundaries** | Perform arithmetic. A controller decides *whether* a computation runs and *what happens if it fails*, never *what the answer is* |
-| **Domain** | Every business and computation rule, the exception rules, the statutory application, and the authorization decision | Know about HTTP or about SQL. A domain service takes and returns values, not requests or query builders |
+| **Application** | Controllers, request validation, policy checks, **transaction boundaries** | ✧ Perform arithmetic. A controller decides *whether* an import proceeds and *what happens if it fails*, never *whether the figures reconcile* |
+| **Domain** | ✧ Every live business rule, the reconciliation checks, the exception rules, the statutory application, and the authorization decision | Know about HTTP or about SQL. A domain service takes and returns values, not requests or query builders |
 | **Persistence** | Repositories, Eloquent models, migrations, and query construction | Contain a payroll rule. A repository retrieves and stores; it does not decide |
 | **Data** | Tables, keys, and the constraints of data model §5.2 | — |
 
-**The one rule that matters:** dependencies point downward only. The domain layer has no reference to the application layer, which is what makes the computation testable without a browser and is what NFR-2.7's parallel run depends on — the engine can be driven directly by a test harness against the same 30 employees the manual computation covers.
+**The one rule that matters:** dependencies point downward only. The domain layer has no reference to the application layer, ✧ which is what makes intake testable without a browser and is what NFR-2.12's fidelity harness and FR-2.9's refusal suite both depend on — `RegisterImportService` and `ReconciliationService` can be driven directly by a test harness against fixture register files, with no HTTP and no database. This is the re-argued ground of AD-04 and AD-05; architecture §10.1 records why the original ground no longer holds and how it was replaced.
 
 **Why server-rendered rather than a single-page application.** C-05 says the system must be operable by staff whose prior tool was Excel, and UI-06 requires keyboard-only data entry. Server-rendered pages with progressive enhancement give predictable tab order and native form behavior for free. A single-page application would add a build step, a second language, and an API surface the FRS never asks for — the system has no mobile client, no third-party consumer, and no offline-client requirement.
 
@@ -279,12 +284,16 @@ flowchart TB
         M1"]
     end
 
-    subgraph DOM["Domain — 12 services"]
+    subgraph DOM["Domain — 14 services"]
         direction LR
-        D1["ComputationEngine
+        D1["RegisterImportService ⊕
+        M4"]
+        D1b["ReconciliationService ⊕
+        M4"]
+        D1c["WorksheetExportService ⊕
         M4"]
         D2["StatutoryScheduleService
-        M1, M4"]
+        M1, M7"]
         D3["ExceptionEvaluator
         M5"]
         D4["PayslipService
@@ -311,7 +320,7 @@ flowchart TB
         M1"]
     end
 
-    subgraph PERS["Persistence — 5 repositories"]
+    subgraph PERS["Persistence — 6 repositories"]
         direction LR
         R1["EmployeeRepository
         M2"]
@@ -327,7 +336,7 @@ flowchart TB
         M1"]
     end
 
-    DBX[("MySQL — 37 entities")]
+    DBX[("MySQL — 39 entities")]
 
     PRES --> APPL
     APPL --> DOM
@@ -346,7 +355,7 @@ flowchart TB
 
 ## 5.1 Component responsibilities
 
-Only the 21 additions are specified here. The 14 in green keep the responsibilities behavioral §1.4 assigned them, unchanged and unrestated.
+✧ Only the 21 additions are specified here. The 17 in green keep the responsibilities behavioral §1.4 assigned them, unchanged and unrestated — including the four CR-01 introduced, which are specified there rather than repeated here.
 
 | ⊕ Component | Layer | Responsibility | Serves |
 |---|---|---|---|
@@ -364,15 +373,15 @@ Only the 21 additions are specified here. The 14 in green keep the responsibilit
 | `ValidationService` | Domain | The authoritative implementation of UC-I1 — required fields, ranges, date logic, duplicate detection | FR-1.5, AC-1.5.1 – 4 |
 | `AttendanceImportService` | Domain | Parses CSV and `.xlsx` against the published template, maps rows to employees, reports rejects without partial commit | FR-1.3, SW-01, UC-13 |
 | `LeaveService` | Domain | Leave balances, overlap refusal, posting approved leave to the covering period | FR-1.4, BR-09 – BR-10, UC-15, UC-16 |
-| `ReportService` | Domain | Builds the eleven reports of the FR-5.3 catalogue from stored data; performs no computation of its own | FR-5.3, AC-5.3.1 – 5 |
+| `ReportService` | Domain | ✧ Builds the eleven reports of the FR-5.3 catalogue from stored data; performs no computation of its own. Since CR-01 it calls `StatutoryScheduleService` for an employer share the register did not carry, and labels every such figure as derived rather than imported (AC-2.3.4) | FR-5.3, AC-5.3.1 – 5 |
 | `BackupService` | Domain | Scheduled dump, verification, and the documented restore path. Triggered by the `System Clock` actor | NFR-5.4 †, UC-07 |
 | `ReferenceRepository` | Persistence | Departments, positions, employment statuses, earning and deduction types, leave types, holidays, system config | FR-0.4, 8 entities |
-| `StatutoryRepository` | Persistence | Dated schedules and their brackets; effectivity-range queries | FR-2.3 †, 2 entities |
+| `StatutoryRepository` | Persistence | ✧ Dated schedules and their brackets; effectivity-range queries. Read only by `StatutoryScheduleService` on the remittance-reporting path — no payroll figure passes through it | FR-2.3 †, 2 entities |
 | `Integrity Screens` | Presentation | Verification request, result display with both hashes, pending-anchor status, PDF export of an outcome | FR-6.3, UC-31 |
 | `IntegrityController` | Application | Orchestrates verification; owns the transaction that persists a verification result. Holds no hashing logic | FR-6.3, AC-6.3.7 |
 | `LedgerGateway` | Persistence | The only component that speaks to the ledger. Submits a hash, reads one back, and reports unreachability as a distinct outcome rather than as a failure | FR-6.3, AC-6.3.3, AC-6.3.5 |
 
-† These three are administered from **M1** while their effect belongs to **M4** or **M7** — the split FRS §2.2 and use-case Table 1 both record. The architecture reproduces it rather than resolving it: `Admin Screens` and `AdminController` are M1 components, and they drive `StatutoryScheduleService` and `BackupService`, whose effects land in M4 and M7.
+† ✧ These three are administered from **M1** while their effect belongs to **M7** — the split FRS §2.2 and use-case Table 1 both record. The architecture reproduces it rather than resolving it: `Admin Screens` and `AdminController` are M1 components, and they drive `StatutoryScheduleService` and `BackupService`, whose effects both land in M7. Before CR-01, `StatutoryScheduleService`'s effect landed in M4, because the schedules drove computation; they now drive only employer-share derivation for reporting, so the effect moved with them.
 
 ## 5.2 Module-to-layer map
 
@@ -383,7 +392,7 @@ Every module of FRS §2.2 is present at every layer it needs, and no module owns
 | **M1** System Administration | `Sign-in Screen` ⊕, `Admin Screens` ⊕, `Integrity Screens` ⊕ | `AdminController` ⊕, `IntegrityController` ⊕ | `AuthorizationService`, `AuditService`, `StatutoryScheduleService`, `BackupService` ⊕, `LedgerAnchorService`, `IntegrityVerificationService` | `ReferenceRepository` ⊕, `StatutoryRepository` ⊕, `LedgerGateway` ⊕ |
 | **M2** Employee Management | `Employee Screens` ⊕ | `EmployeeController` ⊕ | `ValidationService` ⊕ | `EmployeeRepository` |
 | **M3** Attendance & Leave | `Attendance Screens` ⊕ | `AttendanceController` ⊕ | `AttendanceImportService` ⊕, `LeaveService` ⊕, `ValidationService` ⊕ | `AttendanceRepository` |
-| **M4** Payroll Computation | `Payroll Run UI` | `PayrollRunController` | `ComputationEngine`, `StatutoryScheduleService` | `PayrollRepository`, `EmployeeRepository`, `AttendanceRepository` |
+| **M4** ✧ Payroll Intake | `Payroll Run UI` | `PayrollRunController` | `RegisterImportService` ⊕, `ReconciliationService` ⊕, `WorksheetExportService` ⊕ | `ImportRepository` ⊕, `PayrollRepository`, `EmployeeRepository`, `AttendanceRepository` |
 | **M5** Validation & Approval | `Payroll Run UI` | `PayrollRunController` | `ExceptionEvaluator`, `NotificationService`, `AuthorizationService` | `PayrollRepository` |
 | **M6** Payslip | `Payslip Screens` ⊕ | `PayslipController` ⊕ | `PayslipService` | `PayrollRepository` |
 | **M7** Records & Reporting | `Report Screens` ⊕ | `ReportController` ⊕ | `ReportService` ⊕, `BackupService` ⊕ | `PayrollRepository` |
@@ -394,17 +403,27 @@ Every module of FRS §2.2 is present at every layer it needs, and no module owns
 
 Six requirements are not satisfiable by any structure. Each needed a specific mechanism, and each is named here so the panel can be shown the mechanism rather than told it exists.
 
-## 6.1 C-01 — statutory logic that a rate change does not recompile
+✧ **CR-01 rewrote two of the six.** §6.1's data-driven-rates argument now covers a second surface — the register's column layout — and §6.6 is no longer about all-or-nothing computation but all-or-nothing *intake*. §6.4 changed most: the risk it names moved from the computation path to the parse path, and the test that guarded it was retired.
 
-`StatutoryScheduleService` receives a pay date and an agency and returns the schedule whose effectivity range contains that date. **No SSS bracket, PhilHealth rate, Pag-IBIG cap, or BIR band appears anywhere in source code.** All of it is rows in `STATUTORY_SCHEDULE` and `STATUTORY_BRACKET`, maintained through `Admin Screens` by the Administrator (UC-05).
+## 6.1 ✧ C-01 — reference data that a change does not recompile
 
-The test is AC-2.3.1: a new schedule can be entered and take effect with no source modification. The architecture makes that structurally true rather than a matter of discipline — the computation engine has no branch on agency values because it never sees one.
+C-01 now covers two surfaces, and the second is new. Both obey the same rule: **a fact the client can change without warning must be a row, not a line of code.**
+
+**Statutory schedules.** `StatutoryScheduleService` receives a pay date and an agency and returns the schedule whose effectivity range contains that date. **No SSS bracket, PhilHealth rate, Pag-IBIG cap, or BIR band appears anywhere in source code.** All of it is rows in `STATUTORY_SCHEDULE` and `STATUTORY_BRACKET`, maintained through `Admin Screens` by the Administrator (UC-05). The test is AC-2.3.1.
+
+✧ **Register column layout.** `RegisterImportService` reads the accounting office's file through an `IMPORT_COLUMN_MAP` row, never through column positions or header names fixed in code. The test is AC-2.8.4: a change to the accounting office's layout is absorbed by editing the mapping.
+
+This second surface is the more likely of the two to move. A statutory schedule changes by circular, on notice, a few times a year. A spreadsheet column gets renamed, reordered, or inserted by whoever is maintaining the workbook that week, with no notice at all — and since CR-01 the entire payroll enters through that file. Fixing the layout in code would have made the most volatile input in the system the one requiring a developer, which is risk **R4** in [CR-01](./change-request-cr-01.md) and the reason `IMPORT_COLUMN_MAP` is an entity rather than a constant.
+
+The architecture makes both structurally true rather than a matter of discipline: no component has a branch on an agency name or a column header, because none ever sees one.
 
 ## 6.2 C-04 — runs that stay reproducible after the rates change
 
-Version binding happens **once, at computation time, inside the domain layer**. `ComputationEngine` writes `PAYROLL_LINE.compensation_profile_id` and `DEDUCTION_LINE.statutory_schedule_id` as it computes, and `PayrollRunController` fixes them at finalization (behavioral Figure 3, `H3`).
+✧ Version binding happens **once, at import time, inside the domain layer**. `RegisterImportService` writes `PAYROLL_LINE.payroll_import_id` and `PAYROLL_LINE.compensation_profile_id` as it loads each row; `StatutoryScheduleService` writes `DEDUCTION_LINE.statutory_schedule_id` when it derives an employer share; and `PayrollRunController` fixes all three at finalization (behavioral Figure 3).
 
-Nothing recomputes on read. A payslip reprinted three years later (UC-28) renders stored values through `PayslipService`; it does not re-run the engine. This is why AC-2.3.3 and AC-5.1.3 can both pass, and why superseding a schedule is safe.
+✧ **A third version now binds, and it is the one that matters most.** `payroll_import_id` names the file the figures came from. Once payroll originates outside the system, reproducing a run means reproducing *what was received*, not what would be computed today — and without the import binding there would be no answer to that at all.
+
+Nothing recomputes on read; nothing could. A payslip reprinted three years later (UC-28) renders stored values through `PayslipService`. This is why AC-2.3.3, AC-2.10.4, and AC-5.1.3 can all pass, and why superseding a schedule is safe.
 
 ## 6.3 NFR-7.1 — four users without lost updates
 
@@ -423,11 +442,22 @@ PHP has no native decimal type, and this is the single most likely place for a c
 |---|---|
 | Storage | `DECIMAL(13,2)` for money, `DECIMAL(6,4)` for multipliers, `DECIMAL(7,2)` for hours (data model §1.4) |
 | Retrieval | Eloquent casts money columns to string, **never to float** |
-| Computation | `ComputationEngine` uses `BCMath` throughout; PHP's native arithmetic operators are not used on a monetary value |
+| ✧ Parse | `RegisterImportService` reads every monetary cell as a **decimal string** from the spreadsheet library and constructs the decimal value from that string. No cell is read as a PHP float or an Excel serial number (BR-40) |
+| ✧ Comparison | `ReconciliationService` uses `BCMath` for every sum and comparison in BR-37; PHP's native arithmetic operators are not used on a monetary value |
 | Rounding | Half-up to two decimals at each step defined by BR-01, not once at the end |
 | Display | Two decimals, thousands separator, right-aligned (UI-03) |
 
-**A single `(float)` cast anywhere in this path defeats BR-01 and NFR-2.7.** The parallel run of 30 employees across three periods is the test that would catch it, and it is worth running early rather than at acceptance.
+✧ **A single `(float)` cast anywhere in this path defeats BR-01, and CR-01 moved both the danger and the defence.**
+
+In baseline B1 the risk lived in the computation path, and the parallel run of NFR-2.7 — thirty employees across three periods, agreeing to the centavo against a manual computation — was the test that would have caught it. CR-01 retired the computation *and* that test. The risk did not go with them: it moved to the **parse path**, where it is materially easier to introduce, because a spreadsheet library's default behaviour is to hand back a PHP float and a developer must go out of their way to ask for a string instead.
+
+So the exposure increased at the same moment the detection mechanism was removed. Three things close the gap, and all three are load-bearing:
+
+- **BR-40** states the prohibition as a rule rather than as discipline — money is read as a decimal string and never passes through a binary float between the file and the database.
+- **AD-18** gives it a mechanism, in the same way AD-07 gave BR-01 one: the parse path has no float in it to misuse.
+- **NFR-2.12** tests it, over the same thirty employees and three periods NFR-2.7 used — but comparing stored values against the source file rather than against a manual computation, and including a seeded-alteration pass so a comparison that has silently stopped working is detected.
+
+A cent lost to a float here would now be lost silently in *both* directions: the system would neither compute the right answer nor notice that it had stored the wrong one. This is the most consequential implementation risk in the revised baseline.
 
 ## 6.5 BR-26, BR-27 — audit that cannot drift from the change
 
@@ -435,9 +465,11 @@ PHP has no native decimal type, and this is the single most likely place for a c
 
 `AUDIT_LOG` is append-only, enforced at the database rather than in the application: the application's MySQL account holds `INSERT` and `SELECT` on that table and **not** `UPDATE` or `DELETE` (data model §5.2). An application bug cannot rewrite history, which is the property BR-27 is actually asking for.
 
-## 6.6 UC-18 — all-or-nothing computation
+## 6.6 ✧ UC-18 — all-or-nothing intake
 
-`PayrollRunController` opens one transaction for the whole run. A failure at employee 61 of 120 rolls back all 120 (UC-18 E6). A run is never left half-computed, because a half-computed run is one the Payroll Officer would have to reconcile by hand — the exact work the system exists to remove.
+`PayrollRunController` opens one transaction for the whole import. A failure at row 61 of 120 rolls back all 120 (UC-18 E10). A run is never left holding part of a register, because a partly-loaded register is neither the payroll the accounting office produced nor a complete one, and no later reader could tell which.
+
+✧ **Two refusals happen before the transaction opens at all**, and this is the structural change CR-01 made here. `RegisterImportService` refuses a structurally malformed file (E1) and `ReconciliationService` refuses a file that does not reconcile or is incomplete (E2 – E5) — both *before* `BEGIN`. In baseline B1 the equivalent operation could only fail once it had begun writing, because a computation has nothing to validate beforehand. An import does, and refusing early means the common failure case never touches the database.
 
 ```mermaid
 sequenceDiagram
@@ -445,41 +477,57 @@ sequenceDiagram
     participant UI as Payroll Run UI
     participant C as PayrollRunController
     participant AUTH as AuthorizationService
-    participant ENG as ComputationEngine
-    participant SS as StatutoryScheduleService
+    participant IMP as RegisterImportService
+    participant REC as ReconciliationService
     participant EX as ExceptionEvaluator
     participant REPO as PayrollRepository
+    participant IREPO as ImportRepository
     participant AUD as AuditService
     participant DB as MySQL
 
-    UI->>C: compute runId
+    UI->>C: importRegister runId, file, mappingVersion
     activate C
-    C->>AUTH: authorize COMPUTE_RUN
+    C->>AUTH: authorize IMPORT_REGISTER
     AUTH-->>C: permitted
-    C->>DB: BEGIN
-    loop every payroll line
-        C->>ENG: computeLine employee, attendance, profile
-        ENG->>SS: scheduleInForce agency, payDate
-        SS-->>ENG: dated schedule
-        ENG-->>C: earnings, deductions, net, versions bound
-        C->>REPO: persist line within the open transaction
-    end
-    C->>EX: evaluate EX-01 to EX-10 across the run
-    EX-->>C: exceptions, blocking and warning
-    C->>AUD: recordComputation same transaction
-    alt any step failed
-        C->>DB: ROLLBACK
-        C-->>UI: Run unchanged - E6
-    else all lines computed
-        C->>DB: COMMIT
-        C-->>UI: computed, skipped, exceptions, elapsed
+
+    C->>IMP: parse file, mappingVersion
+    IMP-->>C: rows, or structural refusal E1
+    Note over C,IMP: No database work yet - a malformed<br/>file never reaches BEGIN
+
+    C->>REC: reconcile rows, population
+    REC-->>C: result, or refusal E2 to E5
+    Note over C,REC: Still no database work
+
+    alt refused at either gate
+        C-->>UI: Run unchanged - nothing written
+    else both gates passed
+        C->>DB: BEGIN
+        C->>REPO: replace payroll lines, earning lines, deduction lines
+        C->>REPO: decrement loan balances
+        C->>IREPO: store import version, hash, file, mapping, totals
+        C->>EX: evaluate exception rules across the run
+        EX-->>C: exceptions, blocking and warning
+        C->>AUD: recordImport same transaction
+        alt any step failed
+            C->>DB: ROLLBACK
+            C-->>UI: Run unchanged - E10
+        else all rows written
+            C->>DB: COMMIT
+            C-->>UI: loaded, exceptions, elapsed
+        end
     end
     deactivate C
 ```
 
-**Figure 4.** *A compute request through the layers — the architectural view of behavioral Figure 1*
+**Figure 4.** *✧ An import request through the layers — the architectural view of behavioral Figure 1*
 
-**Reading the diagram.** This is the same interaction behavioral Figure 1 models, drawn to show *which layer* each participant sits in rather than the full flow detail. Two things are visible here that the behavioral view does not emphasize: the transaction opens in the **application** layer and closes there, and every arrow points downward through the layers of Figure 2 — the engine never calls the controller back.
+**Reading the diagram.** This is the same interaction behavioral Figure 1 models, drawn to show *which layer* each participant sits in rather than the full flow detail. ✧ Three things are visible here that the behavioral view does not emphasize.
+
+The transaction opens in the **application** layer and closes there, as it did in B1.
+
+Every arrow points downward through the layers of Figure 2 — `RegisterImportService` and `ReconciliationService` never call the controller back.
+
+And `BEGIN` sits **after both gates**, not before them. That placement is the architecture's answer to the fact that the system can no longer vouch for the figures it stores: if it cannot guarantee a register is right, it can at least guarantee that a register it has judged wrong never touched the database.
 
 ## 6.7 FR-6.3 — tamper-evidence without touching the payroll path
 
@@ -740,7 +788,7 @@ Every selection below is fixed. Where two products would both have served, the a
 | **Ledger** | Hyperledger Besu, QBFT | 24.x | AD-14. Installed from the official distribution as a systemd service — no container runtime required |
 | **Ledger contract** | Solidity anchor contract | 0.8.x | One function, `anchor(bytes32 payloadHash, string calldata ref)`. Free gas; there is no economics on a private network |
 | **Ledger client** | JSON-RPC over HTTP from `LedgerGateway` ⊕ | — | One HTTP call and one response. A full web3 library would be a dependency carried for two methods |
-| **Testing** | PHPUnit | bundled | Plus the NFR-2.7 parallel-run harness, which drives `ComputationEngine` directly (AD-04, AD-05) |
+| **Testing** | PHPUnit | bundled | ✧ Plus the NFR-2.12 intake-fidelity harness and the reconciliation-refusal suite, which drive `RegisterImportService` and `ReconciliationService` directly (AD-04, AD-05) |
 | **Version control** | Git | — | Migrations and seeders under version control are what make §8.4's claim checkable |
 
 ## 9.2 Deliberately not in the stack
@@ -773,26 +821,44 @@ This is **AD-16**, and it belongs in the deployment runbook rather than only her
 
 # 10. Architectural decisions
 
-Where the requirements determined the answer, §2 and §3 say so. These sixteen were genuine choices. **AD-10 through AD-14 concern the integrity layer**, and **AD-15 and AD-16 the platform it all runs on (§9).** AD-12 and AD-13 are the two that decide whether it is worth having, and **AD-13 is the only decision in this document still awaiting client validation** (OI-11).
+Where the requirements determined the answer, §2 and §3 say so. ✧ These eighteen were genuine choices. **AD-10 through AD-14 concern the integrity layer**, **AD-15 and AD-16 the platform it all runs on (§9)**, and ✧ **AD-17 and AD-18 the intake boundary CR-01 created.** AD-12 and AD-13 are the two that decide whether the integrity layer is worth having, and **AD-13 is the only decision in this document still awaiting client validation** (OI-11).
+
+✧ **Two decisions were re-argued rather than carried forward.** `AD-04` and `AD-05` were both justified, in baseline B1, by `ComputationEngine` and `NFR-2.7`. CR-01 retired both. A decision whose stated rationale no longer holds is a defect even when the decision itself remains right — so each was re-examined against the system as it now is, and each is restated below on grounds that survive the change. Both happened to survive; that was not assumed in advance, and §10.1 records what would have happened had they not.
 
 | ID | Decision | Alternative considered | Why |
 |---|---|---|---|
 | **AD-01** | Browser-based application served from a LAN server | Windows desktop client with a shared database | One deployment point and one update path for four workstations; no database credential leaves the server; CM-01 satisfied by HTTPS. Cost: keyboard-only operation (UI-06) and printing (HW-01) need deliberate attention rather than coming free |
-| **AD-02** | Laravel 11 on PHP 8.3 | ASP.NET Core, Django, Spring Boot | Eloquent maps cleanly onto the 37 entities; migrations make §8.4 achievable; the stack is well supported locally, which matters for a system the client must maintain after handover |
+| **AD-02** | Laravel 11 on PHP 8.3 | ASP.NET Core, Django, Spring Boot | ✧ Eloquent maps cleanly onto the 39 entities; migrations make §8.4 achievable; PhpSpreadsheet handles the register import and worksheet export of FR-2.8 and FR-2.11 without an added dependency; the stack is well supported locally, which matters for a system the client must maintain after handover |
 | **AD-03** | MySQL 8.4 LTS with InnoDB | PostgreSQL, SQL Server Express | `DECIMAL(13,2)`, real foreign keys, and transactional DDL-free migrations are all that NFR-6.4 requires, and the client's environment is more likely to have MySQL administration available |
-| **AD-04** | Four layers with downward-only dependencies | Domain-driven design with aggregates; transaction script | The payroll rules are substantial enough to need a domain layer and simple enough not to need aggregates. The decisive factor is NFR-2.7: the engine must be drivable by a test harness with no HTTP and no database |
-| **AD-05** | Repository interfaces over Eloquent, not Eloquent directly in services | Active Record used throughout | Keeps `ComputationEngine` free of persistence concerns so the parallel run can drive it with fixtures. Cost: five thin classes that add no behavior |
+| **AD-04** ✧ | Four layers with downward-only dependencies | Domain-driven design with aggregates; transaction script | **Re-argued under CR-01.** The original decisive factor was NFR-2.7 — the computation engine had to be drivable by a test harness with no HTTP and no database. Both the engine and NFR-2.7 are retired. The decision stands on a new decisive factor: **NFR-2.12 and FR-2.9 impose the same requirement on different components.** Transcription fidelity is tested by driving `RegisterImportService` over a file and comparing what it produces; reconciliation refusal is tested by driving `ReconciliationService` over seeded defective registers. Neither test can involve a browser, and both must run against fixtures rather than a live database, for exactly the reason the parallel-run harness had to. The domain layer is thinner than it was — it holds verification rather than computation — but the layering earns its place on the same argument, applied to the components that replaced the one it was written for |
+| **AD-05** ✧ | Repository interfaces over Eloquent, not Eloquent directly in services | Active Record used throughout | **Re-argued under CR-01.** The original justification was entirely `ComputationEngine` and the parallel-run harness, both retired. It now rests on `ReconciliationService`, which is the component that most needs to be drivable without a database: the reconciliation-refusal test of FRS §10 runs a set of seeded registers, each carrying exactly one defect, and asserts that each is refused. That suite is worth having only if it is cheap to run, and it is cheap only if the service under test takes fixtures rather than a schema. Cost: six thin classes that add no behavior — one more than before, since `ImportRepository` joins them |
 | **AD-06** | Server-rendered Blade with Alpine.js | React or Vue single-page application | No mobile client, no third-party API consumer, and no offline-client requirement exists. An SPA would add a build pipeline and an API surface no requirement asks for, against C-05 |
-| **AD-07** | `BCMath` for every monetary operation | Native PHP arithmetic with rounding discipline | BR-01 and C-02 forbid binary floating point. Discipline is not a mechanism; a library that has no float path is |
+| **AD-07** ✧ | `BCMath` for every monetary operation | Native PHP arithmetic with rounding discipline | BR-01 and C-02 forbid binary floating point. Discipline is not a mechanism; a library that has no float path is. **Reframed under CR-01:** the operations to protect are no longer the computation's — there is none — but reconciliation's sums and comparisons under BR-37. The precision requirement did not weaken when computation left; a one-centavo error introduced by a float would now cause a *correct* register to be refused, or a wrong one accepted |
 | **AD-08** | Authorization enforced in the application **and** as a database constraint | Application-layer enforcement alone | AC-6.2.1 and BR-28 are the design's strongest control. The backstop holds even if the application is wrong |
 | **AD-09** | Scheduled work runs on the application host as the `System Clock` actor | An external cron or a manual procedure | Keeps backup and session sweeping inside the system boundary where the use case model already placed them (UC-07), and keeps them auditable |
 | **AD-10** | Permissioned on-premises ledger | Public blockchain with periodic anchoring; hash chain in MySQL alone | A public chain requires internet access, which C-03 and SW-04 forbid outright. A hash chain inside MySQL is defeated by whoever controls MySQL, which is the exact threat FR-6.3 addresses. A permissioned node on a separate host is the only option that satisfies both |
 | **AD-11** | Hashes only on the ledger, never payroll data | Encrypted payroll records on the ledger | Payroll data is personal data. An append-only store is by construction one you cannot correct or erase, which is the opposite of what personal data requires. Hashes carry the evidence without carrying the data (AC-6.3.6) |
 | **AD-12** | Asynchronous anchoring via a transactional outbox | Synchronous write to the ledger inside the payroll transaction | Synchronous anchoring would let a ledger outage block finalization, making the integrity layer a new point of failure in the process it protects. The outbox keeps the guarantee (`AC-6.3.1`) without the coupling (`AC-6.3.5`) |
 | **AD-13** | Ledger hosts administered by someone other than the payroll DBA — **recommended, pending client validation (OI-11)** | One administrator for everything | The guarantee comes from separation of control, not from cryptography. Same administrator on both, and FR-6.3 detects accident but not intent. The recommendation is the external IT contact of FRS §2.3, which needs no new hire — only a separation of credentials that already exist |
+| **AD-17** ✧ | A canonical register template with a dated, versioned column mapping held as reference data | Fixed column positions; header-name matching in code; requiring the accounting office to adopt the system's exact layout | The accounting office's workbook is now the entry point for the entire payroll, and it is maintained by people with no reason to consult this document before renaming a column. Requiring them to change their layout would have made adoption depend on a concession the client did not offer; fixing it in code would have made the most volatile input in the system the one needing a developer. A mapping row absorbs both. It also makes **OI-12 configuration rather than rework** — the layout was unknown when this baseline was frozen, and the architecture was shaped so that the answer, when it arrives, changes data and not structure. Cost: one entity, one screen, and a preview step at import |
+| **AD-18** ✧ | A parse path with no binary float in it — decimal strings from the spreadsheet library, converted straight to the decimal type | Reading numerically and rounding carefully at the boundary | The same argument as AD-07, applied where CR-01 moved the danger. A spreadsheet library's *default* is to hand back a PHP float, so correctness here depends on going out of one's way — and §6.4 explains why the test that would have caught the slip retired along with the computation. Configuring the reader to yield strings removes the failure mode rather than guarding against it. Cost: the import code reads more awkwardly than the obvious version, and BR-40 exists to stop someone tidying it back |
 | **AD-15** | Ubuntu Server 24.04 LTS on the application and ledger hosts | Windows Server | Ubuntu is the platform this stack's documentation assumes, and it keeps the ledger host's service management identical to the application host's. **Windows Server changes nothing in the application** — same PHP, same Laravel, same MySQL, same Besu — only the runbook, the service definitions, and who is comfortable administering it. Confirm with the client's IT contact alongside OI-11; nothing waits on it |
 | **AD-16** | Dependencies resolved at build time and shipped in the artifact | `composer install` on the server; a local package mirror | C-03 leaves the server with no route to Packagist or npm. Building elsewhere and deploying a complete artifact is the option that needs no infrastructure the client must maintain. A local mirror is the alternative if the client's IT prefers it, and costs a service to run (§9.3) |
 | **AD-14** | Hyperledger Besu with QBFT consensus | Hyperledger Fabric; a minimal signed append-only log | Fabric's channels, MSPs, and orderers exist for multi-organization consortia — the case A-04 explicitly rules out — and would be machinery installed and handed over unused. A minimal signed log gives the same guarantee for this threat model but invites the objection that it is not a ledger at all. Besu is the middle: recognizable, Ethereum-tooled, and light enough for one office to operate. Node count is deployment configuration, not architecture — see §7.3 |
+
+## 10.1 ✧ On re-arguing a decision whose rationale was removed
+
+`AD-04` and `AD-05` were the two decisions [CR-01](./change-request-cr-01.md) put at risk, and the way they were handled is worth stating, because the same situation will arise again on any project whose scope moves.
+
+Both decisions named their justification explicitly. `AD-04` said *"the decisive factor is NFR-2.7: the engine must be drivable by a test harness with no HTTP and no database."* `AD-05` said it existed to keep `ComputationEngine` free of persistence concerns so the parallel run could drive it with fixtures. CR-01 retired NFR-2.7, the parallel run, and the engine — all three of the things those sentences point at.
+
+**The tempting move was to leave both rows untouched.** Four layers and repository interfaces are ordinary, defensible choices; nobody reviewing the architecture would have challenged them, and the stated reasons would have sat there quietly being false. That is precisely the failure the baseline's §5 procedure exists to prevent: a document stays coherent only if every claim in it is still true, and a rationale is a claim.
+
+So each was re-examined against the system as it now is, with the question put as if for the first time: *given a system that imports and verifies rather than computes, would we still choose this?* Both times the answer was yes, and both times for a reason that is genuinely different from the original one — the components needing to be drivable without HTTP or a database are now `RegisterImportService` and `ReconciliationService`, and the suites needing them are NFR-2.12's fidelity harness and FR-2.9's refusal suite.
+
+**Had the answer been no, the decision would have been reversed rather than quietly restated.** A thinner domain layer than B1's is a real outcome of this change, and if verification alone had not warranted one, the honest conclusion would have been to collapse the layering and say so. It did warrant one, on the evidence above. The point is that the conclusion was reached rather than assumed.
+
+`AD-07` was reframed on the same principle, and its case is the sharpest of the three: the rule it defends did not weaken at all, but the place it must be enforced moved from arithmetic to parsing, and the test that guarded it disappeared. A decision that had been merely correct became load-bearing. §6.4 and `AD-18` carry that argument in full.
 
 ---
 
@@ -808,13 +874,17 @@ Where the requirements determined the answer, §2 and §3 say so. These sixteen 
 | FR-1.3 Attendance intake | `AttendanceImportService` ⊕, PhpSpreadsheet, `AttendanceRepository` (SW-01) |
 | FR-1.4 Leave administration | `LeaveService` ⊕, `AttendanceRepository` |
 | FR-1.5 Validation at entry | `ValidationService` ⊕ (authoritative) + inline display in Presentation (UI-05) |
-| FR-2.1 – 2.2, 2.5 Computation | `ComputationEngine` with `BCMath` (§6.4) |
-| FR-2.3 Statutory tables † | `StatutoryScheduleService`, `StatutoryRepository` ⊕, `Admin Screens` ⊕ (§6.1) |
-| FR-2.4 Adjustments | `ComputationEngine`, `PayrollRepository` |
+| FR-2.3 ✧ Statutory tables for remittance † | `StatutoryScheduleService`, `StatutoryRepository` ⊕, `Admin Screens` ⊕ (§6.1) |
+| FR-2.4 ✧ Adjustments | `PayrollRepository`, `Payroll Run UI` |
+| FR-2.5 ✧ Net pay integrity check | `ReconciliationService` ⊕ with `BCMath`, plus the database constraints of data model §5.2 (§6.4) |
 | FR-2.6 Payroll run lifecycle | `PayrollRunController` transaction boundary (§6.6) |
+| FR-2.8 ✧ Register import | `RegisterImportService` ⊕, PhpSpreadsheet in string mode, `IMPORT_COLUMN_MAP` (§6.1, AD-17, AD-18) |
+| FR-2.9 ✧ Reconciliation and completeness | `ReconciliationService` ⊕, `EmployeeRepository`, `ExceptionEvaluator` (§6.6) |
+| FR-2.10 ✧ Import versioning | `ImportRepository` ⊕, `PAYROLL_IMPORT`, and the anchor binding of §6.7 |
+| FR-2.11 ✧ Input worksheet export | `WorksheetExportService` ⊕, PhpSpreadsheet, `EmployeeRepository`, `AttendanceRepository` |
 | FR-3.1 – 3.4 Payslips | `PayslipService`, `PayslipController` ⊕, DomPDF (SW-02) |
-| FR-4.1 Exception report | `ExceptionEvaluator` (EX-01 … EX-10) |
-| FR-4.2 – 4.3 Register and recomputation | `Payroll Run UI`, `PayrollRepository`, `is_stale` (§6.3) |
+| FR-4.1 ✧ Exception report | `ExceptionEvaluator` (EX-01 – EX-08, EX-10 – EX-14) |
+| FR-4.2 – 4.3 ✧ Register and correction | `Payroll Run UI`, `PayrollRepository`, `ImportRepository` ⊕ supersession (§6.3) |
 | FR-4.4 – 4.5 Approval and locking | `PayrollRunController`, `AuthorizationService`, `run_status` guarded updates (§6.3) |
 | FR-5.1 – 5.3 Records and reporting | `ReportService` ⊕, `ReportController` ⊕, `PayrollRepository` |
 | FR-6.1 Audit trail | `AuditService` enlisted in the caller's transaction (§6.5) |
@@ -822,7 +892,7 @@ Where the requirements determined the answer, §2 and §3 say so. These sixteen 
 | FR-6.3 Ledger-anchored integrity | `LedgerAnchorService`, `IntegrityVerificationService`, `LedgerGateway` ⊕, `Integrity Screens` ⊕, `IntegrityController` ⊕, `INTEGRITY_ANCHOR`, `INTEGRITY_VERIFICATION` (§6.7, §7.3) |
 | DR-1.6, DR-2.2 – 2.4 | Persistence layer, migrations, version binding (§6.2, §8.4) |
 | DR-2.1 Retention | `SYSTEM_CONFIG.RECORD_RETENTION_YEARS`, backup retention (§8.2) |
-| NFR-2.7 Accuracy | Domain layer drivable without HTTP or database (AD-04, AD-05) |
+| NFR-2.12 ✧ Transcription fidelity | `RegisterImportService` ⊕ and `ReconciliationService` ⊕ drivable without HTTP or database (AD-04, AD-05); no-float parse path (AD-18, §6.4) |
 | NFR-3.5 Issuance turnaround | Batch generation in `PayslipService`; server-side PDF rather than per-client rendering |
 | NFR-5.4 Backup † | `BackupService` ⊕ on the scheduler (§8.2) |
 | NFR-5.5 Retrieval performance | Indexes of data model §7.3; server-side pagination in `ReportController` ⊕ |
@@ -840,6 +910,8 @@ Where the requirements determined the answer, §2 and §3 say so. These sixteen 
 
 **Coverage.** Every requirement item that has an architectural realization has one. NFR-6.6 is a verification activity and NFR-7.2 – 7.4 are ungated expectations, both marked as such rather than given an artificial element.
 
+✧ **`FR-2.1`, `FR-2.2`, and `NFR-2.7` are absent from this table because they no longer exist**, and `ComputationEngine` is absent because [CR-01](./change-request-cr-01.md) retired it. The four components that replaced it — `RegisterImportService`, `ReconciliationService`, `WorksheetExportService`, and `ImportRepository` — are each traced above. A reference to the retired engine anywhere in this baseline is a defect.
+
 ---
 
 # 12. Open items affecting this architecture
@@ -848,7 +920,10 @@ Where the requirements determined the answer, §2 and §3 say so. These sixteen 
 |---|---|---|
 | ~~**OI-08**~~ | ~~Deployment target~~ | ✅ **Closed by this document.** Local network, browser client, one application server (§3, AD-01) |
 | **OI-01** | Employee count and growth | §8.1 sizing, and whether the application and database roles share a host |
+| ~~**OI-03**~~ | ~~Day factor~~ | ✅ ✧ **Closed by CR-01.** The system derives no rate, so `SYSTEM_CONFIG.DAY_FACTOR` and the derived-rate columns are gone. Nothing in this architecture reads a day factor |
 | **OI-04** | Timekeeping device and export format | `AttendanceImportService` ⊕ parser; SW-01 template |
+| **OI-12** ✧ | Register column layout | **Nothing structural.** `IMPORT_COLUMN_MAP` rows and the canonical field list — AD-17 exists precisely so this answer is data. A sample file is still needed before FR-2.8 can be built, but no component, table, or interface waits on it |
+| **OI-13** ✧ | Employer shares in the register | Whether `StatutoryScheduleService` and `StatutoryRepository` ⊕ are exercised often or rarely. If the register always carries employer shares, both components and two entities become dead weight and may be removed; if it never does, they are the only thing keeping FR-5.3's remittance reports buildable. The architecture holds either way, which is why it was built this way while the answer was outstanding |
 | **OI-06** | Bank and transmittal layout | One `ReportService` ⊕ output format |
 | **OI-09** | One approver or multi-level | If multi-level, `PayrollRunController` gains a second approval state and FR-4.4's state machine changes. **The single item on this list that would alter the architecture rather than configure it** |
 | **OI-10** | Retention period | §8.2 backup retention; `SYSTEM_CONFIG.RECORD_RETENTION_YEARS` |
@@ -864,8 +939,14 @@ Where the requirements determined the answer, §2 and §3 say so. These sixteen 
 
 3. **Figure 1 answers the deployment question a panel will ask** — *"is this on the internet?"* — with a boundary that has no line crossing it.
 
-4. **The class model is now derivable and is the remaining design artifact.** It follows from the 35 components here, the 37 entities of the data model, and the 14 participants of behavioral §1.4. A data flow diagram, if the department requires one, follows from Figures 1 and 4.
+4. **✧ The class model is now derivable and is the remaining design artifact.** It follows from the 38 components here, the 39 entities of the data model, and the 17 participants of behavioral §1.4. A data flow diagram, if the department requires one, follows from Figures 1 and 4 — and is worth more than it was, because the system's boundary now has a round trip through it: data leaves as a worksheet, is transformed outside, and returns as a register. That is the shape a DFD renders well and a component diagram renders awkwardly.
 
 5. **Be precise about what the ledger proves.** The honest claim is *"a finalized run cannot be altered without detection"* — not *"payroll cannot be tampered with"* and certainly not *"payroll is on the blockchain."* §6.7 states the boundary in a table; use it verbatim rather than paraphrasing, because the paraphrase is where this kind of feature gets oversold. OI-11 decides which of the two claims in §7.3 applies; write Chapter IV against the arrangement the client actually agreed to, not the one recommended here.
 
-6. **Write the parallel-run harness early.** AD-04 and AD-05 exist to make `ComputationEngine` drivable without a browser or a database. NFR-2.7 needs 30 employees across three periods agreeing to the centavo, and §6.4 names the one implementation slip — a stray `(float)` — that would break it. A harness built in the first sprint turns that from an acceptance risk into a daily check.
+6. **✧ Write the intake harness early — the reason changed, the urgency increased.** AD-04 and AD-05 now exist to make `RegisterImportService` and `ReconciliationService` drivable without a browser or a database. Two suites belong in the first sprint:
+
+   **Intake fidelity (NFR-2.12).** Thirty employees across three periods, every stored value compared against the source file and then re-exported and compared again, with a seeded-alteration pass so a comparison that has silently stopped working is detected. This is the direct replacement for the B1 parallel run.
+
+   **Reconciliation refusal (FR-2.9).** A set of registers each carrying exactly one seeded defect — a one-centavo row imbalance, a wrong control total, an unmatched employee number, a duplicate row, an omitted active employee — each of which must be refused, with the report naming the defect.
+
+   §6.4 explains why this is more urgent than its B1 equivalent rather than less: the `(float)` slip moved to the parse path, where it is easier to make, at the same moment the test that would have caught it was retired. These two suites are what close that gap, and a defect they would catch is one that silently pays the wrong amount to a real person.

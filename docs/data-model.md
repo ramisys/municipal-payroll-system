@@ -2,10 +2,11 @@
 
 **Project:** Payroll Management System
 **Document:** Entity-Relationship Diagram and Entity Specifications
-**Version:** 1.1
+**Version:** 1.2
 **Date:** August 30, 2026
-**Baseline:** B1 — frozen August 30, 2026 · see [baseline.md](./baseline.md)
+**Baseline:** B2 — frozen August 30, 2026 · see [baseline.md](./baseline.md)
 **Traces to:** [FRS §8](./functional-requirements-specification.md) → [Use Case Model](./use-case-model.md) → [Behavioral Diagrams](./behavioral-diagrams.md)
+**Change:** [CR-01](./change-request-cr-01.md) — payroll computation retained by the accounting office
 
 ---
 
@@ -13,11 +14,13 @@
 
 | | |
 |---|---|
-| Entities | 37 (25 from FRS §8.1, 12 added — see §1.3) |
-| Relationships | 50 |
+| Entities | 39 (27 from FRS §8.1, 12 added — see §1.3) |
+| Relationships | 53 |
 | Subject areas | 6 |
 | Diagrams | 8 |
 | Normal form | Third normal form, with two declared exceptions (§6.2) |
+
+> ✧ **What changed in 1.2.** The client decided the accounting office continues to compute. Two entities were added — `PAYROLL_IMPORT` and `IMPORT_COLUMN_MAP` — to carry the provenance of figures that now originate outside the system. `PAYROLL_LINE` gained `payroll_import_id` and lost `is_computed` and `is_stale`. **No entity was dropped.** `STATUTORY_SCHEDULE` and `STATUTORY_BRACKET` survive in reduced scope, for remittance employer shares only.
 
 ---
 
@@ -44,19 +47,21 @@ Key markers in the diagrams: `PK` primary key, `FK` foreign key, `UK` unique key
 
 ## 1.3 Relationship to FRS §8.1
 
-The FRS inventoried 24 entity rows, one of which — `User / Role` — names two entities. All 25 appear here unchanged.
+✧ The FRS inventoried 26 entity rows, one of which — `User / Role` — names two entities. All 27 appear here unchanged; `PAYROLL_IMPORT` and `IMPORT_COLUMN_MAP` were added to that inventory by [CR-01](./change-request-cr-01.md).
 
 Twelve entities marked **⊕** are added. Each is demanded by a requirement the FRS already states but did not carry into its inventory. None introduces new scope.
 
 | ⊕ Entity | Required by | What breaks without it |
 |---|---|---|
 | `ORGANIZATION_PROFILE` | FR-0.3 | Employer numbers and logo have nowhere to live; remittance reports cannot be produced without re-entry. |
-| `SYSTEM_CONFIG` | FR-0.3, C-01 | Day factor, net pay floor, night period, and exception thresholds would have to be hardcoded, violating C-01. |
+| `SYSTEM_CONFIG` | FR-0.3, C-01 | ✧ Net pay floor, retention period, and exception thresholds would have to be hardcoded, violating C-01. |
 | `EMPLOYMENT_STATUS` | FR-0.4 | FR-0.4 names it as a maintained reference list; `EMPLOYMENT_DETAIL` must reference it. |
-| `EARNING_TYPE` | FR-0.4, BR-12, BR-21 | The taxability and 13th-month-inclusion flags have no home, and BR-19 cannot compute a taxable base. |
+| `EARNING_TYPE` | FR-0.4, BR-12 | ✧ The taxability and 13th-month-inclusion flags have no home, and the payslip cannot state which earnings are taxable. |
 | `DEDUCTION_TYPE` | FR-0.4, BR-25 | The statutory and floor-check flags have no home. |
 | `ATTENDANCE_TYPE` | FR-1.3, UC-14 A1 | Official business and field work cannot be distinguished from ordinary attendance. |
 | `STATUTORY_BRACKET` | FR-2.3 | A schedule is described as brackets; without a child entity a schedule holds no content. |
+| `PAYROLL_IMPORT` ✧ | FR-2.10, BR-39 | The provenance of every payroll figure — which file, which hash, which user, which mapping — has nowhere to live, and FR-6.3 can anchor a run without being able to say what the run was built from. |
+| `IMPORT_COLUMN_MAP` ✧ | FR-2.8, BR-41, C-01 | The accounting office's column layout would have to be fixed in source code, so a renamed column would be a code change rather than a configuration change. |
 | `EXCEPTION_INSTANCE` | FR-4.1 | Warning acknowledgments must be recorded and audited, and blocking state must survive a session. |
 | `REVERSAL_RECORD` | FR-4.5, UC-26 | The specification requires a permanent reversal record holding the original figures. |
 | `PAYSLIP_ISSUANCE` | FR-3.1, FR-3.4 | Generation and reprint events must be recorded with user and timestamp. |
@@ -93,8 +98,8 @@ flowchart TB
     6 entities
     What each person worked and took"]
     D["D · Payroll Run
-    9 entities
-    What was computed, approved, and issued"]
+    11 entities
+    What was received, approved, and issued"]
     E["E · Statutory Reference
     2 entities
     The rates in force at a point in time"]
@@ -119,13 +124,17 @@ flowchart TB
 
 **Figure 1.** *Subject area map*
 
+✧ **Area D grew by two entities under CR-01.** `PAYROLL_IMPORT` and `IMPORT_COLUMN_MAP` sit here rather than in Area E, although a column mapping is reference data by nature, because both exist solely to answer questions about a payroll run: *which file produced it* and *how was that file read*. Detached from a run they mean nothing. Area D's description changed with them — it holds what was **received**, approved, and issued, no longer what was computed.
+
 Area F grew by two entities when the integrity layer was added. `INTEGRITY_ANCHOR` and `INTEGRITY_VERIFICATION` sit here rather than in Area D because they are *about* payroll records without being payroll records — they hold no figure, no name, and no rate, only hashes and outcomes. Deleting every row in both would lose the evidence that payroll was unaltered and would not lose one centavo of payroll.
 
-The model flows in one direction. Areas A, B, and C hold inputs maintained continuously. Area E holds dated reference data maintained on circular. Area D consumes all four to produce a payroll run and never writes back to them. Area F observes everything.
+The model flows in one direction. Areas A, B, and C hold inputs maintained continuously. Area E holds dated reference data maintained on circular. Area D consumes all four and never writes back to them. Area F observes everything.
 
 That one-directional flow is what DR-1.6 buys: a payroll run reads employee data, it does not copy it, so nothing can drift out of sync.
 
-**Subject areas are not modules.** These six areas group *data* by what it describes and how it is written; the seven modules of FRS §2.2 group *functions* by who performs them from which screen. The two need not coincide and here they do not. Area E is the clearest case: the statutory schedules it holds are maintained by the Administrator from M1 (UC-05) and consumed by the computation in M4 (FR-2.3), yet as data they are neither — they are dated reference data whose lifecycle is independent of any payroll run, which is why they form an area of their own. Read a module name to find the screen; read an area name to find the table.
+✧ **One arrow into Area D now originates outside the model entirely.** Since CR-01, the figures on a payroll line arrive in a file produced by the accounting office rather than being derived from Areas A, B, C, and E. Those areas still feed the run — they populate the input worksheet the accounting office computes on (FR-2.11), and they supply the employee identities every imported row must match (BR-38) — but they no longer *determine* what a payroll line contains. `PAYROLL_IMPORT` is what makes that external origin a recorded fact rather than an unexamined assumption: every figure in Area D traces to a named file, a stored hash, and the user who loaded it.
+
+**Subject areas are not modules.** These six areas group *data* by what it describes and how it is written; the seven modules of FRS §2.2 group *functions* by who performs them from which screen. The two need not coincide and here they do not. ✧ Area E remains the clearest case: the statutory schedules it holds are maintained by the Administrator from M1 (UC-05) and consumed by the remittance reports of M7 (FR-2.3), yet as data they are neither — they are dated reference data whose lifecycle is independent of any payroll run, which is why they form an area of their own. Read a module name to find the screen; read an area name to find the table.
 
 ---
 
@@ -158,8 +167,12 @@ erDiagram
     LEAVE_TYPE ||--o{ LEAVE_APPLICATION : "classifies"
     LEAVE_TYPE ||--o{ LEAVE_BALANCE : "measures"
 
-    PAYROLL_PERIOD ||--o{ PAYROLL_RUN : "is computed by"
+    PAYROLL_PERIOD ||--o{ PAYROLL_RUN : "is paid for by"
     PAYROLL_RUN ||--|{ PAYROLL_LINE : "contains"
+    PAYROLL_RUN ||--o{ PAYROLL_IMPORT : "is loaded from"
+    PAYROLL_IMPORT ||--o{ PAYROLL_LINE : "produced"
+    IMPORT_COLUMN_MAP ||--o{ PAYROLL_IMPORT : "was read by"
+    USER ||--o{ PAYROLL_IMPORT : "imported"
     EMPLOYEE ||--o{ PAYROLL_LINE : "is paid through"
     COMPENSATION_PROFILE ||--o{ PAYROLL_LINE : "priced"
     PAYROLL_LINE ||--|{ EARNING_LINE : "itemizes"
@@ -169,7 +182,7 @@ erDiagram
     PAYROLL_LINE ||--o{ LOAN_AMORTIZATION : "deducts"
 
     STATUTORY_SCHEDULE ||--|{ STATUTORY_BRACKET : "consists of"
-    STATUTORY_SCHEDULE ||--o{ DEDUCTION_LINE : "computed"
+    STATUTORY_SCHEDULE ||--o{ DEDUCTION_LINE : "sourced employer share for"
 
     PAYROLL_RUN ||--o{ RUN_TRANSITION : "moves through"
     PAYROLL_RUN ||--o{ EXCEPTION_INSTANCE : "raises"
@@ -191,12 +204,19 @@ erDiagram
     USER ||--o{ INTEGRITY_VERIFICATION : "performs"
 
     HOLIDAY }o..o{ ATTENDANCE_RECORD : "classifies by date"
-    SYSTEM_CONFIG ||--o{ COMPENSATION_PROFILE : "supplies day factor"
 ```
 
-**Figure 2.** *Master entity-relationship diagram — 37 entities, 50 relationships*
+**Figure 2.** *✧ Master entity-relationship diagram — 39 entities, 53 relationships*
 
-`HOLIDAY` relates to `ATTENDANCE_RECORD` by date rather than by foreign key, shown as a dashed association. A holiday classifies a worked day during computation (BR-15) but does not own the attendance record, and attendance exists for dates that are not holidays.
+`HOLIDAY` relates to `ATTENDANCE_RECORD` by date rather than by foreign key, shown as a dashed association. ✧ A holiday classifies a worked day in the input worksheet the accounting office computes on (FR-2.11) but does not own the attendance record, and attendance exists for dates that are not holidays.
+
+✧ **Three relationships were added and two were reworded by CR-01.**
+
+The additions all converge on `PAYROLL_IMPORT`: a run **is loaded from** one or more imports, an import **produced** a set of payroll lines, and a column map **was read by** an import. Together they make the origin of every figure in Area D a matter of record. Note the cardinality on the first: a run may hold *several* imports, of which exactly one is current — superseded versions are retained, never overwritten (BR-39), which is why this is `o{` and not `o|`.
+
+The rewordings are corrections of fact rather than of style. `PAYROLL_PERIOD ||--o{ PAYROLL_RUN` was labelled *is computed by*; nothing computes a run now, so it reads **is paid for by**. `STATUTORY_SCHEDULE ||--o{ DEDUCTION_LINE` was labelled *computed*; the schedule no longer computes any deduction, and the foreign key survives only to record which schedule version produced a **derived employer share** for remittance reporting (FR-2.3, BR-20). On a deduction line whose employer share was imported rather than derived, that key is null — which is itself the record that no derivation took place.
+
+`SYSTEM_CONFIG ||--o{ COMPENSATION_PROFILE : "supplies day factor"` was **removed**. The day factor was BR-02's input, BR-02 is retired, and the system no longer derives a rate from anything. This is the only relationship CR-01 deleted.
 
 ---
 
@@ -302,9 +322,6 @@ erDiagram
         int employee_id FK
         varchar pay_basis
         decimal basic_rate
-        decimal derived_daily_rate
-        decimal derived_hourly_rate
-        decimal day_factor_used
         boolean sss_covered
         boolean philhealth_covered
         boolean pagibig_covered
@@ -494,6 +511,7 @@ erDiagram
     PAYROLL_LINE {
         int payroll_line_id PK
         int payroll_run_id FK
+        int payroll_import_id FK
         int employee_id FK
         int compensation_profile_id FK
         decimal days_worked
@@ -503,8 +521,32 @@ erDiagram
         decimal taxable_compensation
         decimal total_deductions
         decimal net_pay
-        boolean is_stale
-        boolean is_computed
+    }
+    PAYROLL_IMPORT {
+        int payroll_import_id PK
+        int payroll_run_id FK
+        int import_column_map_id FK
+        int version_no
+        varchar source_filename
+        char source_sha256
+        blob source_file
+        int imported_by FK
+        datetime imported_at
+        int row_count
+        decimal control_total_gross
+        decimal control_total_deductions
+        decimal control_total_net
+        json reconciliation_result
+        boolean is_current
+    }
+    IMPORT_COLUMN_MAP {
+        int import_column_map_id PK
+        varchar map_name
+        int version_no
+        json column_bindings
+        date effective_from
+        date effective_to
+        boolean is_active
     }
     EARNING_LINE {
         int earning_line_id PK
@@ -582,11 +624,13 @@ erDiagram
 
 This area is the reason the whole model exists, and three choices in it carry the weight.
 
-`PAYROLL_LINE` holds `compensation_profile_id` — not a copy of the rate, a reference to the exact dated version that priced the line. `DEDUCTION_LINE` holds `statutory_schedule_id` for the same reason. Together they satisfy C-04: a run stays reproducible after rates and schedules are superseded.
+✧ `PAYROLL_LINE` holds `payroll_import_id` — the single most important column CR-01 added. It names the file the line's figures came from. Without it the model would hold a payroll whose origin is unrecorded, which is the condition the client's current process is already in and the one the restated P2 exists to end.
 
-`EARNING_LINE` stores `quantity`, `rate_applied`, `multiplier_applied`, **and** `amount`. The first three explain the fourth. This is what lets a payslip or the register breakdown account for every centavo without recomputation (AC-4.2.3).
+`PAYROLL_LINE` also holds `compensation_profile_id` — not a copy of the rate, a reference to the exact dated version in force for the cut-off. `DEDUCTION_LINE` holds `statutory_schedule_id` for a narrower reason since CR-01: it records which schedule version produced a **derived employer share**, and is null where the share was imported. Together with `payroll_import_id` they satisfy C-04 and DR-2.2.
 
-`is_stale` on `PAYROLL_LINE` is the flag that makes targeted recomputation possible (FR-4.3): correcting one employee's input marks that line stale and leaves the other ninety-nine untouched.
+`EARNING_LINE` stores `quantity`, `rate_applied`, `multiplier_applied`, **and** `amount`. ✧ The first three are imported alongside the fourth and explain it. The system does not verify that quantity times rate times multiplier equals amount — that is the accounting office's arithmetic, and BR-37 checks only that the amounts sum to the totals. What these columns buy is that a payslip or register breakdown can account for every centavo **as the accounting office computed it**, without the system having to reproduce the computation (AC-4.2.3).
+
+✧ `is_stale` and `is_computed` were **removed** from `PAYROLL_LINE`. Both existed to track a line whose inputs had changed since it was last computed. Nothing is computed, so nothing goes stale: a line is either the current import's or it has been superseded wholesale by a later one (BR-39). A boolean that can never become true is worse than no column, because a reader assumes it means something.
 
 **`run_type` participates in the uniqueness of a run.** A pay period may carry more than one run without ambiguity, provided the runs differ in type: the regular run, and beside it the 13th-month or final-pay run that UC-17 A1 describes. This is why the unique constraint in §5.1 is `payroll_period_id + population_scope + run_type` rather than the first two columns alone — the narrower key would have refused exactly the special runs the use case permits. Which earning types a special run computes follows from `run_type`; no attribute enumerates them, because the run type already determines the answer and a second place to state it would be a second place to get it wrong.
 
@@ -760,7 +804,9 @@ erDiagram
 | `LEAVE_BALANCE` | `leave_balance_id` | `employee_id + leave_type_id + payroll_year` | `employee_id`, `leave_type_id` |
 | `PAYROLL_PERIOD` | `payroll_period_id` | `payroll_year + period_no` | — |
 | `PAYROLL_RUN` | `payroll_run_id` | `payroll_period_id + population_scope + run_type` where not cancelled | `payroll_period_id`, `submitted_by`, `approved_by` |
-| `PAYROLL_LINE` | `payroll_line_id` | `payroll_run_id + employee_id` | `payroll_run_id`, `employee_id`, `compensation_profile_id` |
+| `PAYROLL_LINE` | `payroll_line_id` | `payroll_run_id + employee_id` | `payroll_run_id`, `payroll_import_id`, `employee_id`, `compensation_profile_id` |
+| `PAYROLL_IMPORT` | `payroll_import_id` | `payroll_run_id + version_no`; `payroll_run_id` where `is_current` | `payroll_run_id`, `import_column_map_id`, `imported_by` |
+| `IMPORT_COLUMN_MAP` | `import_column_map_id` | `map_name + version_no` | — |
 | `EARNING_LINE` | `earning_line_id` | — | `payroll_line_id`, `earning_type_id` |
 | `DEDUCTION_LINE` | `deduction_line_id` | — | `payroll_line_id`, `deduction_type_id`, `statutory_schedule_id` |
 | `STATUTORY_SCHEDULE` | `statutory_schedule_id` | `agency + effective_from` | — |
@@ -784,7 +830,7 @@ Constraints enforced at the database level, satisfying NFR-6.4.
 | `EMPLOYEE` | `birth_date < CURRENT_DATE` | FR-1.5 date logic |
 | `EMPLOYMENT_DETAIL` | `separation_date IS NULL OR separation_date >= date_hired` | FR-1.5 |
 | `EMPLOYMENT_DETAIL` | `effective_to IS NULL OR effective_to > effective_from` | Dated-version integrity |
-| `COMPENSATION_PROFILE` | `basic_rate >= 0`, `pay_basis IN ('MONTHLY','DAILY','HOURLY')` | FR-1.5, BR-02 |
+| `COMPENSATION_PROFILE` | `basic_rate >= 0`, `pay_basis IN ('MONTHLY','DAILY','HOURLY')` | FR-1.5 |
 | `COMPENSATION_PROFILE` | No overlapping `effective_from`–`effective_to` per employee | BR-08 |
 | `ATTENDANCE_RECORD` | `time_out IS NULL OR time_out > time_in` | UC-13 E4 |
 | `ATTENDANCE_RECORD` | `late_minutes >= 0`, `undertime_minutes >= 0`, `hours_worked >= 0` | BR-04 |
@@ -795,9 +841,14 @@ Constraints enforced at the database level, satisfying NFR-6.4.
 | `PAYROLL_PERIOD` | No overlap and no gap within a `payroll_year` | BR-34 |
 | `PAYROLL_RUN` | `run_status IN ('DRAFT','FOR_REVIEW','APPROVED','RETURNED','FINALIZED','CANCELLED')` | FR-4.4 |
 | `PAYROLL_RUN` | `approved_by <> submitted_by` when `run_status = 'APPROVED'` | **BR-28 — separation of duty** |
-| `PAYROLL_LINE` | `net_pay = gross_pay - total_deductions` | AC-2.5.2 |
-| `PAYROLL_LINE` | `gross_pay = SUM(EARNING_LINE.amount)` for the line | AC-2.2.4 |
-| `PAYROLL_LINE` | `total_deductions = SUM(DEDUCTION_LINE.amount)` for the line | AC-2.4.4 |
+| `PAYROLL_LINE` | `net_pay = gross_pay - total_deductions` | **✧ AC-2.5.2, AC-2.5.5, BR-37 — reconciliation enforced by the database, not only by the importer** |
+| `PAYROLL_LINE` | `gross_pay = SUM(EARNING_LINE.amount)` for the line | ✧ BR-18, BR-37 |
+| `PAYROLL_LINE` | `total_deductions = SUM(DEDUCTION_LINE.amount)` for the line | ✧ AC-2.4.4, BR-37 |
+| `PAYROLL_LINE` | `payroll_import_id` not null | ✧ DR-2.2 — every payroll line names the import that produced it |
+| `PAYROLL_IMPORT` | At most one row per `payroll_run_id` with `is_current = true` | **✧ BR-39 — exactly one current version** |
+| `PAYROLL_IMPORT` | `source_sha256` not null, 64 hexadecimal characters | ✧ BR-39, AC-2.10.4 |
+| `PAYROLL_IMPORT` | No `UPDATE` permitted except `is_current`; no `DELETE` | **✧ BR-39, BR-27 — a superseded import is retained, never rewritten** |
+| `IMPORT_COLUMN_MAP` | No overlapping `effective_from`–`effective_to` per `map_name` | ✧ BR-41 |
 | `EARNING_LINE` | `amount >= 0` | BR-01 |
 | `DEDUCTION_LINE` | `amount >= 0` | BR-01 |
 | `STATUTORY_SCHEDULE` | No overlapping `effective_from`–`effective_to` per `agency` | **BR-14, AC-2.3.2** |
@@ -814,7 +865,9 @@ Constraints enforced at the database level, satisfying NFR-6.4.
 | `INTEGRITY_VERIFICATION` | `result IN ('MATCH','MISMATCH','UNVERIFIABLE')` | AC-6.3.2 – 6.3.4 |
 | `INTEGRITY_VERIFICATION` | No `UPDATE` or `DELETE` permitted on the table | Append-only verification history |
 
-The three constraints in bold are the ones a panel should be shown. Each is a control the client's spreadsheet cannot express at all: a worksheet cannot refuse to let the preparer sign as approver, cannot prevent two contribution tables from claiming the same month, and cannot stop a loan from over-deducting past zero.
+✧ The constraints in bold are the ones a panel should be shown. Each is a control the client's spreadsheet cannot express at all: a worksheet cannot refuse to let the preparer sign as approver, cannot prevent two contribution tables from claiming the same month, cannot stop a loan from over-deducting past zero, cannot retain the version of itself that was superseded, and cannot refuse to hold a row whose net pay disagrees with its own columns.
+
+✧ **The three `PAYROLL_LINE` reconciliation constraints carry more weight since CR-01.** They express BR-37 at the database level, which means a row that does not reconcile cannot be stored *even if the import logic is wrong*. When the system computed its own figures these constraints checked its own arithmetic and could only ever fail on a defect. They now check arithmetic performed in a spreadsheet the system has never seen, and NFR-6.4's requirement that invalid data be rejected by the database rather than only by the application is the difference between a second line of defence and none.
 
 ## 5.3 Enumerated values
 
@@ -823,15 +876,15 @@ The three constraints in bold are the ones a panel should be shown. Each is a co
 | `COMPENSATION_PROFILE.pay_basis` | `MONTHLY`, `DAILY`, `HOURLY` |
 | `PAYROLL_RUN.run_status` | `DRAFT`, `FOR_REVIEW`, `APPROVED`, `RETURNED`, `FINALIZED`, `CANCELLED` |
 | `PAYROLL_RUN.run_type` | `REGULAR`, `THIRTEENTH_MONTH`, `FINAL_PAY`, `SPECIAL` |
-| `PAYROLL_PERIOD.pay_frequency` | `SEMI_MONTHLY`, `MONTHLY` — pending OI-02 |
+| `PAYROLL_PERIOD.pay_frequency` | `SEMI_MONTHLY`, `MONTHLY` — pending OI-02, now a calendar setting only |
 | `ATTENDANCE_RECORD.day_classification` | `ORDINARY`, `REST_DAY`, `SPECIAL_NON_WORKING`, `REGULAR_HOLIDAY`, `REST_DAY_SPECIAL`, `REST_DAY_REGULAR_HOLIDAY` |
 | `ATTENDANCE_RECORD.source` | `IMPORT`, `MANUAL` |
 | `LEAVE_APPLICATION.application_status` | `PENDING`, `APPROVED`, `RETURNED`, `CANCELLED` |
 | `STATUTORY_SCHEDULE.agency` | `SSS`, `PHILHEALTH`, `PAGIBIG`, `BIR` |
 | `EXCEPTION_INSTANCE.severity` | `BLOCKING`, `WARNING` |
-| `EXCEPTION_INSTANCE.rule_code` | `EX-01` … `EX-10` |
+| `EXCEPTION_INSTANCE.rule_code` | ✧ `EX-01` – `EX-08`, `EX-10` – `EX-14` — `EX-09` retired by CR-01 and not reused |
 | `PAYSLIP_ISSUANCE.issuance_type` | `ORIGINAL`, `REPRINT` |
-| `AUDIT_LOG.action` | `CREATE`, `UPDATE`, `DELETE`, `COMPUTE`, `APPROVE`, `FINALIZE`, `REVERSE`, `LOGIN` |
+| `AUDIT_LOG.action` | ✧ `CREATE`, `UPDATE`, `DELETE`, `IMPORT`, `EXPORT`, `APPROVE`, `FINALIZE`, `REVERSE`, `LOGIN` — `COMPUTE` retired with the computation it recorded |
 | `ROLE.role_name` | `ADMINISTRATOR`, `PAYROLL_OFFICER`, `APPROVER`, `VIEWER` |
 | `INTEGRITY_ANCHOR.scope_type` | `RUN`, `REVERSAL`, `AUDIT_SEGMENT` |
 | `INTEGRITY_ANCHOR.anchor_status` | `PENDING`, `CONFIRMED`, `FAILED` |
@@ -844,11 +897,7 @@ The three constraints in bold are the ones a panel should be shown. Each is a co
 
 | Key | Type | Used by |
 |---|---|---|
-| `DAY_FACTOR` | decimal | BR-02 — pending OI-03 |
-| `STANDARD_HOURS_PER_DAY` | decimal | BR-02, BR-16 |
-| `NIGHT_DIFF_START` / `NIGHT_DIFF_END` | time | BR-17 |
-| `NIGHT_DIFF_RATE` | decimal | BR-17 |
-| `OT_MULTIPLIER_<classification>` | decimal | BR-15, BR-16 |
+| `STANDARD_HOURS_PER_DAY` | decimal | ✧ BR-03 — deriving hours worked for the input worksheet |
 | `NET_PAY_FLOOR` | decimal | BR-25, EX-03 |
 | `GROSS_VARIANCE_THRESHOLD_PCT` | decimal | EX-07 |
 | `OVERTIME_HOURS_THRESHOLD` | decimal | EX-08 |
@@ -857,6 +906,9 @@ The three constraints in bold are the ones a panel should be shown. Each is a co
 | `RECORD_RETENTION_YEARS` | int | DR-2.1 — pending OI-10 |
 | `AUDIT_SEGMENT_INTERVAL_HOURS` | int | FR-6.3 — how often an audit segment is closed and anchored |
 | `ANCHOR_RETRY_LIMIT` | int | FR-6.3 — retries before a pending anchor is reported as stalled |
+| `ACTIVE_IMPORT_COLUMN_MAP` ✧ | varchar | FR-2.8, BR-41 — the mapping version applied by default at import |
+
+✧ **Six keys were removed by CR-01**: `DAY_FACTOR`, `NIGHT_DIFF_START`, `NIGHT_DIFF_END`, `NIGHT_DIFF_RATE`, and the `OT_MULTIPLIER_<classification>` family. Every one of them was a *rate the system applied* — the day factor for BR-02, the night period and rate for BR-17, the premium multipliers for BR-15 and BR-16. All four rules are retired and the accounting office holds those parameters now. `STANDARD_HOURS_PER_DAY` survives because BR-03 still uses it to derive hours worked from raw times for the input worksheet, which is attendance, not pay.
 
 ---
 
@@ -954,9 +1006,9 @@ A cascade delete anywhere would let one action silently destroy payroll history.
 
 | Requirement | Entities realizing it |
 |---|---|
-| DR-1.6 Normalized database | All 35 — verified in §6.1 and §7.1 |
+| DR-1.6 Normalized database | ✧ All 39 — verified in §6.1 and §7.1 |
 | DR-2.1 Retention and reproducibility | `SYSTEM_CONFIG.RECORD_RETENTION_YEARS`, plus the §7.4 retention rule over Area D |
-| DR-2.2 Version reference on computed lines | `PAYROLL_LINE.compensation_profile_id`, `DEDUCTION_LINE.statutory_schedule_id` |
+| DR-2.2 ✧ Version reference on payroll lines | ✧ `PAYROLL_LINE.payroll_import_id`, `PAYROLL_LINE.compensation_profile_id`, `DEDUCTION_LINE.statutory_schedule_id`, `PAYROLL_IMPORT.import_column_map_id` |
 | DR-2.3 Decimal type for money | The `DECIMAL(13,2)` convention in §1.4, enforced on every monetary column |
 | DR-2.4 Deletion as deactivation | `is_active` on every entity referenced by a payroll record (§1.4), plus the §7.2 delete rules |
 | FR-0.2 User account management | `USER`, `ROLE` |
@@ -967,15 +1019,18 @@ A cascade delete anywhere would let one action silently destroy payroll history.
 | FR-1.2 Compensation profile | `COMPENSATION_PROFILE`, `RECURRING_EARNING`, `RECURRING_DEDUCTION`, `LOAN_ACCOUNT`, `LOAN_AMORTIZATION` |
 | FR-1.3 Attendance intake | `ATTENDANCE_RECORD`, `ATTENDANCE_TYPE`, `WORK_SCHEDULE`, `HOLIDAY` |
 | FR-1.4 Leave administration | `LEAVE_TYPE`, `LEAVE_APPLICATION`, `LEAVE_BALANCE` |
-| FR-2.1 – 2.2 Pay computation | `PAYROLL_LINE`, `EARNING_LINE`, `SYSTEM_CONFIG`, `HOLIDAY` |
-| FR-2.3 Statutory schedules | `STATUTORY_SCHEDULE`, `STATUTORY_BRACKET`, `DEDUCTION_LINE` |
-| FR-2.4 Adjustments | `EARNING_LINE`, `DEDUCTION_LINE`, `DEDUCTION_TYPE` |
-| FR-2.5 Net pay | `PAYROLL_LINE` |
+| FR-2.3 ✧ Statutory schedules for remittance | `STATUTORY_SCHEDULE`, `STATUTORY_BRACKET`, `DEDUCTION_LINE.employer_share`, `DEDUCTION_LINE.statutory_schedule_id` |
+| FR-2.4 Adjustments | `EARNING_LINE`, `DEDUCTION_LINE`, `DEDUCTION_TYPE`, `LOAN_AMORTIZATION` |
+| FR-2.5 ✧ Net pay integrity check | `PAYROLL_LINE`, and the three reconciliation constraints of §5.2 |
 | FR-2.6 Payroll run | `PAYROLL_PERIOD`, `PAYROLL_RUN` |
+| FR-2.8 ✧ Register import | `PAYROLL_IMPORT`, `IMPORT_COLUMN_MAP`, `PAYROLL_LINE`, `EARNING_LINE`, `DEDUCTION_LINE` |
+| FR-2.9 ✧ Reconciliation and completeness | `PAYROLL_IMPORT.reconciliation_result`, `PAYROLL_IMPORT.control_total_*`, `EXCEPTION_INSTANCE`, and the §5.2 constraints |
+| FR-2.10 ✧ Import versioning | `PAYROLL_IMPORT.version_no`, `source_sha256`, `source_file`, `imported_by`, `imported_at`, `is_current` |
+| FR-2.11 ✧ Input worksheet export | *No entity of its own* — the worksheet is assembled by query from Areas A, B, and C and is not stored. Its production is recorded in `AUDIT_LOG` |
 | FR-3.1 – 3.4 Payslips | `PAYROLL_LINE`, `EARNING_LINE`, `DEDUCTION_LINE`, `PAYSLIP_ISSUANCE`, `ORGANIZATION_PROFILE` |
 | FR-4.1 Exception report | `EXCEPTION_INSTANCE` |
 | FR-4.2 Payroll register | `PAYROLL_RUN`, `PAYROLL_LINE` |
-| FR-4.3 Targeted recomputation | `PAYROLL_LINE.is_stale` |
+| FR-4.3 ✧ Targeted correction | `PAYROLL_IMPORT` (supersession), `EARNING_LINE`, `DEDUCTION_LINE` (adjustment lines) |
 | FR-4.4 Approval workflow | `PAYROLL_RUN.run_status`, `RUN_TRANSITION` |
 | FR-4.5 Period locking | `PAYROLL_RUN.finalized_at`, `REVERSAL_RECORD` |
 | FR-5.1 – 5.3 Records and reporting | All of Area D, plus `ORGANIZATION_PROFILE` for employer numbers |
@@ -985,9 +1040,11 @@ A cascade delete anywhere would let one action silently destroy payroll history.
 | NFR-6.4 Integrity constraints | §5.2 |
 | NFR-6.5 Security | `USER.password_hash`, `password_salt`, `failed_attempt_count`, `is_locked` |
 
-Every one of the 43 requirement items is accounted for. FR-0.1 is realized by `USER.password_hash`, `password_salt`, `failed_attempt_count`, `is_locked`, and `last_login_at`.
+✧ Every one of the 45 requirement items is accounted for. FR-0.1 is realized by `USER.password_hash`, `password_salt`, `failed_attempt_count`, `is_locked`, and `last_login_at`.
 
-**The six with no persistent structure of their own** are named here rather than left to inference: NFR-2.7 (computational accuracy) and NFR-6.6 (ISO/IEC 25010 evaluation) are measurements; NFR-3.5 (issuance turnaround) and NFR-5.5 (retrieval performance) are timings — though §7.3 specifies the indexes that make NFR-5.5 achievable; NFR-5.4 (backup and restore) is an operational procedure over the whole schema rather than a structure within it; and NFR-6.3 (confirmation and reversal) is an interaction rule, whose one persistent trace is `REVERSAL_RECORD`, already listed under FR-4.5.
+**The six with no persistent structure of their own** are named here rather than left to inference: ✧ NFR-2.12 (transcription fidelity) and NFR-6.6 (ISO/IEC 25010 evaluation) are measurements; NFR-3.5 (issuance turnaround) and NFR-5.5 (retrieval performance) are timings — though §7.3 specifies the indexes that make NFR-5.5 achievable; NFR-5.4 (backup and restore) is an operational procedure over the whole schema rather than a structure within it; and NFR-6.3 (confirmation and reversal) is an interaction rule, whose one persistent trace is `REVERSAL_RECORD`, already listed under FR-4.5.
+
+✧ **FR-2.11 is the one requirement in this table realized by no entity at all**, and the omission is deliberate. The input worksheet is a *view* of data the model already holds — employee, compensation, attendance, leave — assembled at export time and never stored. Storing it would create a second copy of employee data that could drift from the first, which is precisely what DR-1.6 forbids. What *is* stored is the fact that it was produced, in `AUDIT_LOG`, so a register can be matched to the worksheet it came from.
 
 Six of the ten entities added beyond the FRS §8.1 inventory exist to serve FR-0.3 and FR-0.4 — `ORGANIZATION_PROFILE` and `SYSTEM_CONFIG` for the organization profile and calendar, and `EMPLOYMENT_STATUS`, `EARNING_TYPE`, `DEDUCTION_TYPE`, and `ATTENDANCE_TYPE` for the maintained reference lists. FR-0.2 is served by `USER` and `ROLE`, which the FRS inventory already named. These were the least visible rows in this table and are now the most explicit, because a reader checking whether the model covers the specification will look for exactly them.
 
@@ -999,15 +1056,19 @@ Carried from FRS §11. Each changes a column or a constraint, not the model's sh
 
 | OI | Effect on the data model |
 |---|---|
-| **OI-02** Pay frequency | Fixes the permitted values of `PAYROLL_PERIOD.pay_frequency` and the withholding tax `STATUTORY_SCHEDULE.pay_frequency` rows required. |
-| **OI-03** Day factor | Sets `SYSTEM_CONFIG.DAY_FACTOR`; affects every `COMPENSATION_PROFILE.derived_daily_rate`. |
+| **OI-02** Pay frequency | ✧ Fixes the permitted values of `PAYROLL_PERIOD.pay_frequency`. No longer affects any statutory or rate column. |
+| **OI-03** Day factor | ✧ **Closed by CR-01.** `SYSTEM_CONFIG.DAY_FACTOR` and every derived rate column are removed — the system derives no rate. |
 | **OI-04** Biometric export format | Determines the import mapping onto `ATTENDANCE_RECORD`; may add a `device_reference` column. |
-| **OI-05** Pay basis mix | Confirms whether all three `pay_basis` values are needed. |
+| **OI-05** Pay basis mix | ✧ Confirms whether all three `pay_basis` values are needed on the compensation profile and in the exported worksheet. |
+| **OI-12** ✧ Register column layout | Determines the `column_bindings` content of `IMPORT_COLUMN_MAP` and the canonical field list. **It changes no table and no constraint** — this is exactly what the entity was added to absorb. |
+| **OI-13** ✧ Employer shares in the register | Decides whether `DEDUCTION_LINE.statutory_schedule_id` is populated often or rarely. If the register always carries employer shares, `STATUTORY_SCHEDULE` and `STATUTORY_BRACKET` become unused and may be dropped; if it never does, they are essential. Either way the schema is the same. |
 | **OI-06** Bank transmittal layout | May require an `EMPLOYEE.bank_account_no` column and a bank reference entity. |
 | **OI-09** Multi-level approval | If more than one approval level is required, `PAYROLL_RUN.approved_by` becomes a child entity rather than a column. This is the one open item that changes structure. |
 | **OI-10** Retention period | Sets `SYSTEM_CONFIG.RECORD_RETENTION_YEARS`. |
 
 **OI-09 is the one to resolve early.** A single approver is a column; multiple approval levels is a table. Changing it after implementation is a migration, not a configuration.
+
+✧ **OI-12 and OI-13 deliberately do not appear in that sentence.** Both were open when this version was frozen, and neither changes the model's shape — OI-12 lands entirely inside `IMPORT_COLUMN_MAP.column_bindings`, and OI-13 only changes how often a nullable foreign key is populated. That was the design intent: the two questions the client had not yet answered were made into data rather than structure, so that answering them later is configuration, not a migration.
 
 ---
 
@@ -1021,4 +1082,4 @@ Carried from FRS §11. Each changes a column or a constraint, not the model's sh
 
 4. **The version-chain pattern in §6.3 is worth one slide.** It is the structural difference between this system and the client's worksheets, where editing a rate silently restates history.
 
-5. **The system architecture now exists** — see [system architecture](./system-architecture.md). Its §4 places this model at the Data layer beneath a Persistence layer of five repositories, and its §6.2 and §6.4 name the mechanisms that make `compensation_profile_id`, `statutory_schedule_id`, and the `DECIMAL(13,2)` convention hold in running code rather than only on paper. What remains for a complete design chapter is the class diagram — which follows from the architecture's 35 components combined with these 37 entities — and a data flow diagram if the department requires one.
+5. **The system architecture now exists** — see [system architecture](./system-architecture.md). ✧ Its §4 places this model at the Data layer beneath a Persistence layer of repositories, and its §6.2 and §6.4 name the mechanisms that make `payroll_import_id`, `compensation_profile_id`, `statutory_schedule_id`, and the `DECIMAL(13,2)` convention hold in running code rather than only on paper. What remains for a complete design chapter is the class diagram — which follows from the architecture's components combined with these 39 entities — and a data flow diagram if the department requires one.

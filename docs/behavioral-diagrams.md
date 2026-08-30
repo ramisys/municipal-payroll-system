@@ -2,10 +2,11 @@
 
 **Project:** Payroll Management System
 **Document:** Sequence, Activity, and State Machine Diagrams
-**Version:** 1.1
+**Version:** 1.2
 **Date:** August 30, 2026
-**Baseline:** B1 — frozen August 30, 2026 · see [baseline.md](./baseline.md)
+**Baseline:** B2 — frozen August 30, 2026 · see [baseline.md](./baseline.md)
 **Traces to:** [Use Case Model](./use-case-model.md) → [Functional Requirements Specification](./functional-requirements-specification.md) → [Problem-to-Requirements Matrix](./problem-requirements-matrix.md)
+**Change:** [CR-01](./change-request-cr-01.md) — payroll computation retained by the accounting office
 
 ---
 
@@ -16,8 +17,10 @@
 | Sequence diagrams | 4 (UC-18, UC-24, UC-25, UC-31) |
 | Activity diagrams | 3 (UC-18, UC-24, UC-25 with UC-26) |
 | State machine diagrams | 1 (payroll run lifecycle) |
-| Use cases modelled | Fully — UC-18, UC-24, UC-25, UC-26, UC-31. As guarded transitions in Figure 7 — UC-17 (main and A2 cancel), UC-22, UC-23. Included — UC-I6 within Figures 3 and 8. |
-| Participants specified | 14 |
+| Use cases modelled | Fully — UC-18, UC-24, UC-25, UC-26, UC-31. As guarded transitions in Figure 7 — UC-17 (main and A2 cancel), UC-22, UC-23. Included — UC-I6 within Figures 3 and 8, UC-I7 within Figures 1 and 4. |
+| Participants specified | 17 |
+
+> ✧ **What changed in 1.2.** Figures 1 and 4 were redrawn: `UC-18` no longer computes a payroll, it imports and reconciles one. `ComputationEngine` is gone from every diagram; `RegisterImportService`, `ReconciliationService`, `WorksheetExportService`, and `ImportRepository` take its place. **Figure 7's state model is unchanged** — the same six states and six transitions frozen in B1, with two transition labels and two notes reworded to name import rather than computation. Figure 3 gained one step, `bindImportVersionToRun`. Figures 2, 5, 6, and 8 are unchanged.
 
 ---
 
@@ -29,7 +32,7 @@ The use case model specifies thirty-one use cases. Five are modelled here: four 
 
 | Use case | Why it is modelled |
 |---|---|
-| **UC-18 Compute payroll run** | Where the money is calculated. It has the fixed computation order of BR-13, two included use cases, and six exception flows. If any diagram in the manuscript earns its page, it is this one. |
+| **✧ UC-18 Import computed payroll register** | Where the money **enters**. It has two total-refusal gates, two included use cases, and ten exception flows — every one of them a way a register can be wrong or incomplete. It is no longer where the payroll is calculated; it is where the system decides whether to trust a calculation it did not perform. If any diagram in the manuscript earns its page, it is still this one. |
 | **UC-24 Approve or return payroll run** | Where the separation of duty is enforced. BR-28 — the preparer may not approve — is a control that exists only as a runtime check, so it must be visible in the model. |
 | **UC-25 Finalize payroll run** | Where the record becomes immutable. Everything about reproducibility (C-04) and period locking (FR-4.5) happens in this one transition. |
 | **UC-26 Reverse finalized payroll run** | The only way out of `Finalized`, and the one path that must leave permanent evidence. Modelled in the activity view alongside UC-25 (Figure 6). |
@@ -61,15 +64,20 @@ Diagrams are written in Mermaid so they render in the repository.
 
 The sequence diagrams name components, not classes. Their boundaries follow the module structure of FRS §2.2, and the design documentation may realize each as one or several classes.
 
+✧ **`ComputationEngine` no longer exists.** It was the component that executed BR-01 through BR-23, and [CR-01](./change-request-cr-01.md) removed the work it did. Four components replace it, and the split is deliberate: parsing a file, judging whether to trust it, storing its provenance, and producing the worksheet it was computed from are four separable responsibilities with four separable failure modes, where computation was one.
+
 | Participant | Responsibility | Realizes |
 |---|---|---|
-| `Payroll Run UI` | Screens for creating, computing, reviewing, and transitioning runs | M4, M5 |
-| `PayrollRunController` | Orchestrates a run's computation and state transitions | M4, M5 |
-| `ComputationEngine` | Executes the arithmetic of BR-01 through BR-23 | M4 |
+| `Payroll Run UI` | ✧ Screens for creating runs, exporting worksheets, importing registers, reviewing, and transitioning | M4, M5 |
+| `PayrollRunController` | ✧ Orchestrates a run's intake and state transitions | M4, M5 |
+| `RegisterImportService` | ✧ Parses a register file through its column mapping, reading money as decimal strings — FR-2.8, BR-40, BR-41 | M4 |
+| `ReconciliationService` | ✧ Verifies row arithmetic, control totals, employee matching, and completeness — UC-I7, FR-2.9, BR-37, BR-38 | M4 |
+| `WorksheetExportService` | ✧ Assembles and writes the payroll input worksheet — FR-2.11, UC-32 | M4 |
+| `ImportRepository` | ✧ Persists import versions, source files, hashes, and reconciliation results — FR-2.10, BR-39 | M4 |
 | `EmployeeRepository` | Retrieves employee records and dated compensation profiles | M2 |
 | `AttendanceRepository` | Retrieves the attendance and leave summary for a cut-off | M3 |
-| `StatutoryScheduleService` | Selects and applies the schedule in force — UC-I5 | M1, M4 |
-| `ExceptionEvaluator` | Evaluates rules EX-01 to EX-10 — UC-I4 | M5 |
+| `StatutoryScheduleService` | ✧ Selects the schedule in force and derives employer shares for remittance reporting — UC-I5 | M1, M7 |
+| `ExceptionEvaluator` | ✧ Evaluates the live exception rules of FR-4.1 — UC-I4 | M5 |
 | `PayrollRepository` | Persists runs, lines, earnings, deductions, and transitions | M7 |
 | `AuthorizationService` | Enforces the FR-6.2 permission matrix and BR-28 — UC-I3 | M1 |
 | `AuditService` | Writes append-only audit entries — UC-I2 | M1 |
@@ -82,9 +90,11 @@ The sequence diagrams name components, not classes. Their boundaries follow the 
 
 # 2. Sequence diagrams
 
-## 2.1 UC-18 — Compute payroll run
+## 2.1 ✧ UC-18 — Import computed payroll register
 
-Every branch below corresponds to a flow in the use case specification: A3 to the skipped line, E1 to the missing schedule, E3 and E4 to the net pay checks, E5 to the state guard, and E6 to the rollback.
+**✧ Redrawn by CR-01.** In baseline B1 this figure showed the arithmetic of a payroll being produced, line by line, in the order BR-13 fixed. That arithmetic now happens in the accounting office's spreadsheet, where no diagram in this baseline can reach it. What the figure shows instead is the system deciding whether to accept the result — and refusing it in full if it cannot.
+
+Every branch below corresponds to a flow in the use case specification: E1 to the structural refusal, E2 to E5 to the reconciliation failures, E9 to the state guard, and E10 to the rollback.
 
 ```mermaid
 sequenceDiagram
@@ -93,113 +103,97 @@ sequenceDiagram
     participant UI as Payroll Run UI
     participant CTRL as PayrollRunController
     participant AUTH as AuthorizationService
-    participant REPO as PayrollRepository
+    participant IMP as RegisterImportService
+    participant REC as ReconciliationService
     participant EMP as EmployeeRepository
-    participant ATT as AttendanceRepository
-    participant ENG as ComputationEngine
-    participant STAT as StatutoryScheduleService
+    participant IREPO as ImportRepository
+    participant REPO as PayrollRepository
     participant EXC as ExceptionEvaluator
     participant AUD as AuditService
 
-    PO->>UI: Compute payroll run
-    UI->>CTRL: computeRun runId
+    PO->>UI: Select run, register file, mapping version
+    UI->>CTRL: importRegister runId, file, mappingVersion
     activate CTRL
 
-    CTRL->>AUTH: authorize user for COMPUTE_RUN
+    CTRL->>AUTH: authorize user for IMPORT_REGISTER
     AUTH-->>CTRL: permitted
 
     CTRL->>REPO: loadRun runId
-    REPO-->>CTRL: run with payroll lines
+    REPO-->>CTRL: run with population
 
     alt Run state is not Draft or Returned
         CTRL-->>UI: Refused - run is locked for editing
-        UI-->>PO: Show refusal E5
+        UI-->>PO: Show refusal E9
     else Run is editable
-        CTRL->>REPO: beginTransaction
 
-        loop For each payroll line in the run
-            CTRL->>EMP: getCompensationProfile empId, cutoffEnd
-            alt No active compensation profile
-                EMP-->>CTRL: none
-                CTRL->>EXC: raise EX-02 blocking
-                Note over CTRL,EXC: Line skipped, run continues A3, E2
-            else Profile found
-                EMP-->>CTRL: profile with rate version
-                CTRL->>ATT: getAttendanceSummary empId, cutoff
-                ATT-->>CTRL: hours, absences, late, undertime, leave, overtime
+        CTRL->>IMP: parse file, mappingVersion
+        activate IMP
+        Note over IMP: Money read as decimal strings only<br/>never through a float BR-40
+        alt Structural failure - unmapped field, missing column,<br/>non-numeric cell, duplicate employee row
+            IMP-->>CTRL: refused with failures by row and column
+            CTRL-->>UI: File refused in full - nothing written E1
+            UI-->>PO: Show failure report
+        else File parses
+            IMP-->>CTRL: parsed rows
+            deactivate IMP
 
-                CTRL->>ENG: computeBasicPay profile, attendance
-                ENG-->>CTRL: basic pay per BR-05
-                CTRL->>ENG: computeAdditionalPay overtime, night, holiday, allowances
-                ENG-->>CTRL: additional pay per BR-15 to BR-17
-                CTRL->>ENG: sumGrossPay
-                ENG-->>CTRL: gross pay per BR-18
-                CTRL->>ENG: computeAbsenceTardinessUndertime
-                ENG-->>CTRL: time deductions per BR-11
+            CTRL->>REC: reconcile rows, run population
+            activate REC
+            REC->>REC: verify gross equals sum of earnings BR-37
+            REC->>REC: verify deductions equal sum of deduction lines BR-37
+            REC->>REC: verify net equals gross less deductions BR-37
+            REC->>REC: compare file control totals with loaded rows BR-37
+            REC->>EMP: matchEmployees by employee number BR-38
+            EMP-->>REC: matched, unmatched, inactive
+            REC->>REC: verify every active employee present BR-38
 
-                CTRL->>STAT: getScheduleInForce agency, payDate
-                alt No schedule covers the pay date
-                    STAT-->>CTRL: none
-                    CTRL->>EXC: raise EX-05 blocking naming the agency
-                    Note over CTRL,EXC: Line halted, remaining lines continue E1
-                else Schedule in force
-                    STAT-->>CTRL: schedule version
-                    CTRL->>ENG: computeStatutory SSS, PhilHealth, PagIBIG
-                    ENG-->>CTRL: employee and employer shares per BR-20
-                    CTRL->>ENG: deriveTaxableCompensation
-                    ENG-->>CTRL: taxable base per BR-19
-                    CTRL->>ENG: computeWithholdingTax taxable base, frequency
-                    ENG-->>CTRL: withholding tax
+            alt Any reconciliation check fails
+                REC-->>CTRL: refused with failing checks
+                deactivate REC
+                CTRL->>EXC: raise EX-11, EX-12, EX-13, or EX-14 blocking
+                CTRL-->>UI: Register refused - nothing written E2 to E5
+                UI-->>PO: Show which check failed and for whom
+            else All checks pass
+                REC-->>CTRL: reconciliation result
+
+                CTRL->>REPO: beginTransaction
+                CTRL->>REPO: replacePayrollLines from parsed rows
+                CTRL->>REPO: writeEarningLines and deductionLines
+                CTRL->>REPO: decrementLoanBalances by amounts deducted BR-23
+                CTRL->>IREPO: storeImportVersion file, sha256, user, timestamp,<br/>mappingVersion, rowCount, controlTotals, reconciliationResult
+                IREPO-->>CTRL: version stored and marked current BR-39
+                Note over IREPO: Superseded versions retained<br/>never overwritten BR-27
+
+                CTRL->>EXC: evaluateAllRules run
+                EXC-->>CTRL: exception report by severity
+
+                CTRL->>AUD: recordImport user, timestamp, version, counts
+                AUD-->>CTRL: audit entry written
+
+                alt Any step failed
+                    CTRL->>REPO: rollbackTransaction
+                    CTRL-->>UI: Import failed - no partial result E10
+                    UI-->>PO: Show failure
+                else All steps succeeded
+                    CTRL->>REPO: commitTransaction
+                    CTRL-->>UI: loaded, exceptions, elapsed time
+                    UI-->>PO: Show summary and exception report
                 end
-
-                CTRL->>ENG: applyLoansAndOtherDeductions
-                ENG-->>CTRL: deduction lines per BR-22, BR-23
-                CTRL->>ENG: computeNetPay gross less total deductions
-                ENG-->>CTRL: net pay per BR-13
-
-                alt Total deductions exceed gross pay
-                    CTRL->>EXC: raise EX-04 blocking
-                end
-                alt Net pay is zero, negative, or below floor
-                    CTRL->>EXC: raise EX-03 blocking
-                    Note over CTRL,EXC: Statutory deductions may not be reduced BR-25
-                end
-
-                CTRL->>REPO: savePayrollLine with rate and schedule versions
             end
-        end
-
-        CTRL->>REPO: computeRunTotals
-        REPO-->>CTRL: total gross, totals by deduction, total net
-
-        CTRL->>EXC: evaluateAllRules run
-        EXC-->>CTRL: exception report by severity
-
-        CTRL->>AUD: recordComputation user, timestamp, counts
-        AUD-->>CTRL: audit entry written
-
-        alt Any step failed
-            CTRL->>REPO: rollbackTransaction
-            CTRL-->>UI: Computation failed - no partial result E6
-            UI-->>PO: Show failure
-        else All steps succeeded
-            CTRL->>REPO: commitTransaction
-            CTRL-->>UI: computed, skipped, exceptions, elapsed time
-            UI-->>PO: Show summary and exception report
         end
     end
     deactivate CTRL
 ```
 
-**Figure 1.** *Sequence — UC-18 Compute payroll run*
+**Figure 1.** *✧ Sequence — UC-18 Import computed payroll register*
 
-**Reading the diagram.** Three things carry the design.
+**Reading the diagram.** ✧ Three things carry the design, and all three are different from what carried it in B1.
 
-The **order is not incidental.** Withholding tax is computed at steps 30–33, after the mandatory contributions at step 28, because taxable compensation is gross less those contributions (BR-19). Reversing the two would produce a wrong tax on every payslip — and it is exactly the kind of ordering a spreadsheet leaves to whoever built the tab.
+**Refusal is total, and it happens twice.** There are two gates — the structural parse and the reconciliation — and each refuses the *entire file*, writing nothing. The alternative, accepting the good rows and reporting the bad ones, would leave a payroll run that is neither the register the accounting office produced nor a complete payroll, and no later reader could tell which. This is why `beginTransaction` appears only after both gates pass.
 
-The **schedule version is captured, not just the amount.** At `savePayrollLine`, the rate version and statutory schedule version are stored on the line. This is what makes a finalized run reproducible after the schedule is superseded (C-04) and what allows UC-28 to reissue an identical payslip years later.
+**The provenance is stored with the figures, in the same transaction.** `storeImportVersion` carries the source file, its SHA-256 hash, the acting user, and the mapping version alongside the payroll lines it produced. In B1 the equivalent step stored the rate and schedule *versions* that a computation had used; the question has changed from *what rules produced this figure* to *what file did this figure come from*, and it is now the first question an auditor asks.
 
-The **transaction spans the whole run.** A failure at any line rolls back everything (E6). A payroll is never left half-computed, which is the failure a spreadsheet cannot prevent when someone closes it midway.
+**The one thing this sequence never does is compute.** There is no arithmetic anywhere in it except comparison. `ReconciliationService` adds columns only to check that someone else's addition agrees, and a disagreement of one centavo refuses the file rather than correcting it. The system is not permitted to be right about a figure the accounting office got wrong — it is only permitted to notice, and only when the error makes the register disagree with itself.
 
 ---
 
@@ -347,14 +341,15 @@ sequenceDiagram
             UI-->>AP: Show refusal
         else State is Approved
             CTRL->>REPO: beginTransaction
+            CTRL->>REPO: bindImportVersionToRun
             CTRL->>REPO: bindRateVersionsToEachLine
             CTRL->>REPO: bindStatutoryScheduleVersionsToEachLine
-            Note over CTRL,REPO: Preserves reproducibility after schedules change C-04
+            Note over CTRL,REPO: Preserves reproducibility after schedules change C-04<br/>and fixes which file produced this payroll FR-2.10
             CTRL->>REPO: setRunState Finalized
             CTRL->>REPO: markLinesImmutable
             CTRL->>REPO: recordTransition user, timestamp
             CTRL->>AUD: recordFinalization user, timestamp, total net
-            CTRL->>ANC: queueAnchor runId, computed hash - UC-I6
+            CTRL->>ANC: queueAnchor runId, hash over lines and import file - UC-I6
             Note over CTRL,ANC: Queued inside the transaction so a committed run always has a pending anchor
             CTRL->>REPO: commitTransaction
             CTRL->>PAY: enablePayslipGeneration runId
@@ -369,7 +364,7 @@ sequenceDiagram
     end
 
     opt Any later edit attempted on the finalized run
-        AP->>UI: Edit, delete, or recompute
+        AP->>UI: Edit, delete, re-import, or adjust
         UI->>CTRL: mutate runId
         CTRL-->>UI: Refused - finalized runs are immutable E2
         Note over CTRL: No override exists for any role, Administrator included
@@ -378,7 +373,11 @@ sequenceDiagram
 
 **Figure 3.** *Sequence — UC-25 Finalize payroll run*
 
-**Reading the diagram.** The `bindRateVersionsToEachLine` and `bindStatutoryScheduleVersionsToEachLine` calls are the ones to explain. Binding the rate and statutory schedule versions to each line at the moment of finalization is what separates this system from the client's worksheets. When SSS publishes a new contribution table next year, every finalized run keeps showing the figures it was computed with, and a payslip reprinted in 2029 for a 2026 period reproduces the 2026 amounts exactly. A spreadsheet whose formula references a contribution table silently reports different numbers the moment that table is edited.
+**Reading the diagram.** ✧ The three `bind` calls are the ones to explain, and CR-01 added the first of them.
+
+`bindImportVersionToRun` fixes **which file** this payroll came from. Once the figures originate in a spreadsheet outside the system, that is the first thing an auditor asks and the only thing no other record can answer. The anchor queued four steps later covers the import hash together with the payroll lines, so altering the retained source file afterward is reported as a mismatch by UC-31.
+
+`bindRateVersionsToEachLine` and `bindStatutoryScheduleVersionsToEachLine` fix **what reference data** was in force. When SSS publishes a new contribution table next year, every finalized run keeps showing the figures it was finalized with, and a payslip reprinted in 2029 for a 2026 period reproduces the 2026 amounts exactly. A spreadsheet whose formula references a contribution table silently reports different numbers the moment that table is edited — which, since CR-01, is a property of the accounting office's workbook rather than of this system, and one more reason the import version is bound here.
 
 The trailing `opt` fragment is not a flow the user takes — it documents that the refusal has no override. Panels ask who can bypass it. The answer is nobody, and the diagram says so.
 
@@ -386,124 +385,115 @@ The trailing `opt` fragment is not a flow the user takes — it documents that t
 
 # 3. Activity diagrams
 
-## 3.1 UC-18 — Compute payroll run
+## 3.1 ✧ UC-18 — Import computed payroll register
+
+✧ **Redrawn by CR-01.** The B1 version of this figure was a loop: select a payroll line, compute nine things in a fixed order, save it, repeat. The loop is gone. What replaces it is a gate sequence — two refusal points that either admit the whole register or admit none of it — followed by a single set-based write.
 
 ```mermaid
 flowchart TD
     START([Start]) --> A1
 
+    subgraph LANE_ACC["Accounting office - outside the system"]
+        X1["Compute the payroll
+        in Excel from the
+        exported worksheet"]
+    end
+
     subgraph LANE_PO["Payroll Officer"]
-        A1["Trigger computation
-        for the payroll run"]
+        A1["Select run, register file,
+        and column mapping version"]
+        A2["Confirm the
+        resolved column preview"]
         A9["Review summary and
         exception report"]
     end
 
-    subgraph LANE_SYS["System - PayrollRunController and ComputationEngine"]
+    subgraph LANE_SYS["System - RegisterImportService, ReconciliationService, PayrollRunController"]
         B1{"Run state is
         Draft or Returned?"}
         B2["Refuse - run is locked
         for editing"]
-        B3["Begin transaction"]
-        B29{"Recompute the whole run,
-        or only stale lines?"}
-        B30["Select the set of lines
-        marked is_stale"]
-        B31["Select every line
-        in the run"]
-        B4["Select next payroll line
-        from the selected set"]
-        B5{"Active compensation
-        profile exists?"}
-        B6["Raise EX-02 blocking
-        and skip this line"]
-        B7["Compute basic pay
-        from attendance and rate"]
-        B8["Compute overtime, night differential,
-        holiday premium, allowances"]
-        B9["Sum gross pay"]
-        B10["Compute absence, tardiness,
-        and undertime deductions"]
-        B11{"Statutory schedule
-        in force for pay date?"}
-        B12["Raise EX-05 blocking
-        and halt this line"]
-        B13["Compute SSS, PhilHealth,
-        and Pag-IBIG"]
-        B14["Derive taxable compensation
-        gross less non-taxable
-        less contributions"]
-        B15["Compute withholding tax"]
-        B16["Apply loans, standing deductions,
-        and adjustments"]
-        B17["Total deductions,
-        then compute net pay"]
-        B18{"Net pay at or
-        below floor?"}
-        B19["Raise EX-03 blocking"]
-        B20["Save payroll line with
-        rate and schedule versions"]
-        B21{"More payroll
-        lines?"}
-        B22["Compute run totals"]
-        B23["Evaluate exception rules
-        EX-01 to EX-10"]
-        B24["Write audit entry"]
-        B25{"Any step
+        B3["Resolve columns through
+        the mapping version"]
+        B4["Parse file - money read as
+        decimal strings only, never float"]
+        B5{"Structural failure?
+        unmapped field, missing column,
+        non-numeric cell, duplicate row"}
+        B6["Refuse the file in full
+        and report every failure
+        by row and column"]
+        B7["Verify row arithmetic
+        gross, deductions, net"]
+        B8["Compare file control totals
+        with the sum of loaded rows"]
+        B9["Match every row to one
+        active employee by number"]
+        B10["Verify every active employee
+        in the population is present"]
+        B11{"All reconciliation
+        checks pass?"}
+        B12["Raise EX-11, EX-12, EX-13,
+        or EX-14 blocking and
+        refuse the whole register"]
+        B13["Begin transaction"]
+        B14["Replace payroll lines,
+        earning lines, deduction lines"]
+        B15["Decrement loan balances by
+        the amounts deducted"]
+        B16["Store import version - file,
+        SHA-256, user, timestamp,
+        mapping version, totals"]
+        B17["Mark this version current,
+        retain the superseded one"]
+        B18["Evaluate exception rules"]
+        B19["Write audit entry"]
+        B20{"Any step
         failed?"}
-        B26["Roll back the entire
-        computation"]
-        B27["Commit transaction"]
-        B28["Return computed, skipped,
-        exceptions, elapsed time"]
+        B21["Roll back the
+        entire import"]
+        B22["Commit transaction"]
+        B23["Return loaded, exceptions,
+        elapsed time"]
     end
 
+    X1 --> A1
     A1 --> B1
     B1 -->|No| B2
-    B2 --> STOP1([Stop - E5])
+    B2 --> STOP1([Stop - E9])
     B1 -->|Yes| B3
-    B3 --> B29
-    B29 -->|"stale only - A2"| B30
-    B29 -->|"whole run - A1"| B31
-    B30 --> B4
-    B31 --> B4
+    B3 --> A2
+    A2 --> B4
     B4 --> B5
-    B5 -->|No| B6
-    B6 --> B21
-    B5 -->|Yes| B7
+    B5 -->|Yes| B6
+    B6 --> STOP2([Stop - E1 nothing written])
+    B5 -->|No| B7
     B7 --> B8 --> B9 --> B10 --> B11
     B11 -->|No| B12
-    B12 --> B21
+    B12 --> STOP3([Stop - E2 to E5 nothing written])
     B11 -->|Yes| B13
-    B13 --> B14 --> B15 --> B16 --> B17 --> B18
-    B18 -->|Yes| B19
-    B19 --> B20
-    B18 -->|No| B20
-    B20 --> B21
-    B21 -->|Yes| B4
-    B21 -->|No| B22
-    B22 --> B23 --> B24 --> B25
-    B25 -->|Yes| B26
-    B26 --> STOP2([Stop - E6])
-    B25 -->|No| B27
-    B27 --> B28 --> A9
-    A9 --> STOP3([Stop])
+    B13 --> B14 --> B15 --> B16 --> B17 --> B18 --> B19 --> B20
+    B20 -->|Yes| B21
+    B21 --> STOP4([Stop - E10])
+    B20 -->|No| B22
+    B22 --> B23 --> A9
+    A9 --> STOP5([Stop])
 
     classDef act fill:#eef3f1,stroke:#0F6154,stroke-width:1px,color:#111;
     classDef dec fill:#f6f1e8,stroke:#8A5A12,stroke-width:1px,color:#111;
     classDef term fill:#ffffff,stroke:#333,stroke-width:1px,color:#111;
-    class A1,A9,B2,B3,B4,B6,B7,B8,B9,B10,B12,B13,B14,B15,B16,B17,B19,B20,B22,B23,B24,B26,B27,B28,B30,B31 act;
-    class B1,B5,B11,B18,B21,B25,B29 dec;
-    class START,STOP1,STOP2,STOP3 term;
+    classDef out fill:#f6f1e8,stroke:#8A5A12,stroke-width:2px,stroke-dasharray:4 3,color:#111;
+    class A1,A2,A9,B2,B3,B4,B6,B7,B8,B9,B10,B12,B13,B14,B15,B16,B17,B18,B19,B21,B22,B23 act;
+    class B1,B5,B11,B20 dec;
+    class START,STOP1,STOP2,STOP3,STOP4,STOP5 term;
+    class X1 out;
 ```
 
-**Figure 4.** *Activity — UC-18 Compute payroll run*
+**Figure 4.** *✧ Activity — UC-18 Import computed payroll register*
 
-**Reading the diagram.** The loop from `B21` back to `B4` is the whole answer to problem P2. In the client's process this loop is a human moving down a worksheet row by row, applying formulas by hand; here it is one action that runs to completion or rolls back entirely.
+✧ **Three stop states write nothing.** `E1`, `E2 to E5`, and `E10` all terminate with the run exactly as it was. Only one path reaches `Commit transaction`, and it passes both gates first. In B1 this figure had a single rollback at the end because a computation could only fail once it had begun; an import can fail before it has any right to begin, and drawing those refusals as separate terminal states is the point of the redraw.
 
-The two skip paths — `B6` for a missing compensation profile and `B12` for a missing statutory schedule — deliberately return to the loop rather than aborting the run. One employee's missing data does not stop the other ninety-nine from computing. The blocking exceptions they raise prevent submission until resolved, which is the right place for the stop: at the gate to review, not partway through the arithmetic.
-
----
+**The lane at the top is not a system lane.** `Accounting office` is drawn outside with dashed edges because no swimlane in this system contains it, and the diagram would be dishonest without it — the register does not appear from nowhere, and the step that produces it is the one the client decided to keep.
 
 ## 3.2 UC-24 — Approve or return payroll run
 
@@ -774,8 +764,8 @@ stateDiagram-v2
     direction LR
     [*] --> Draft : UC-17 create run
 
-    Draft --> Draft : UC-18 compute / UC-22 correct and recompute
-    Draft --> ForReview : UC-23 submit<br/>guard - computed, no stale line,<br/>no blocking exception
+    Draft --> Draft : UC-18 import / UC-22 correct
+    Draft --> ForReview : UC-23 submit<br/>guard - accepted import is current,<br/>no blocking exception
     Draft --> Cancelled : UC-17 A2 cancel<br/>guard - state is Draft,<br/>never approved,<br/>confirmed per NFR-6.3
 
     ForReview --> Approved : UC-24 approve<br/>guard - approver is not the submitter
@@ -794,23 +784,27 @@ stateDiagram-v2
 
     note right of Finalized
         Immutable. No edit, delete,
-        or recompute by any role.
-        Rate and schedule versions
-        bound for reproducibility.
+        re-import, or adjustment
+        by any role. Import, rate, and
+        schedule versions bound
+        for reproducibility.
     end note
 
     note right of Draft
-        The only state in which inputs
-        and adjustments may be edited.
+        The only state in which a register
+        may be imported or superseded
+        and adjustments recorded.
         Returned resolves here.
     end note
 ```
 
 **Figure 7.** *State machine — payroll run lifecycle*
 
+✧ **This is the one modelled artifact CR-01 did not disturb.** Six states, six transitions, every guard in the same place — the lifecycle a payroll run obeys is independent of whether the figures in it were computed by the system or received from the accounting office. Two transition labels were reworded (`compute` became `import`, and the submit guard now names an accepted import rather than a completed computation), and two notes were updated. **No state was added, removed, split, or merged.** It was the most heavily verified figure in baseline B1 and it survives the change intact, which is worth saying plainly: the approval, separation-of-duty, and period-lock controls this diagram enforces are exactly as strong after the change as before it.
+
 **Reading the diagram.** Every guard on this diagram is a control that the client's current process lacks entirely, because a worksheet has no states. The three that matter most:
 
-- **Draft → For Review** requires no stale line and no unresolved blocking exception. Work cannot reach a reviewer half-finished.
+- **✧ Draft → For Review** requires a current accepted import and no unresolved blocking exception. Work cannot reach a reviewer half-finished — and a run holding no register at all cannot be submitted (AC-2.6.4).
 - **For Review → Approved** requires that the approver differ from the submitter (BR-28).
 - **Both return arrows land in `Returned`**, never directly in `Draft`. A run a reviewer sent back carries its reason and is visibly distinct from a draft that was never submitted; `Returned → Draft` is the reopening, not the return.
 - **Finalized → Draft** is guarded by whether payslips have gone out, and always leaves a reversal record.
@@ -827,16 +821,16 @@ stateDiagram-v2
 
 | Figure | Type | Use case | Flows represented | FRS trace |
 |---|---|---|---|---|
-| 1 | Sequence | UC-18 | Main, A3, E1, E2, E5, E6 | FR-2.1, 2.2, 2.3, 2.5, 2.6 |
+| 1 | Sequence | ✧ UC-18, UC-I7 | Main, E1, E2, E3, E4, E5, E9, E10 | FR-2.5, 2.6, 2.8, 2.9, 2.10 |
 | 2 | Sequence | UC-24 | Main, A1, A2, E1, E2, E3 | FR-4.4 (including the clearing of `approved_by` and `approved_at` on return) |
-| 3 | Sequence | UC-25, UC-I6 | Main, E1, E2, and the anchor queued at finalization | FR-4.4, FR-4.5, FR-6.3 |
-| 4 | Activity | UC-18 | Main, A1, A2, A3, E1, E2, E3, E4, E5, E6 | FR-2.1 – 2.6, FR-4.1, FR-4.3 |
+| 3 | Sequence | UC-25, UC-I6 | Main, E1, E2, the import-version binding, and the anchor queued at finalization | FR-4.4, FR-4.5, FR-6.3, ✧ FR-2.10 |
+| 4 | Activity | ✧ UC-18, UC-I7 | Main, A1, A2, A3, E1 – E10 (complete) | FR-2.5, 2.6, 2.8 – 2.10, FR-4.1 |
 | 5 | Activity | UC-24 | Main, A1, A2, E1, E2, E3 | FR-4.4, FR-6.2 |
 | 6 | Activity | UC-25, UC-26 | UC-25 main, E1, E2; UC-26 main, A1, E1, E2, E3 | FR-4.5 |
-| 7 | State machine | UC-17 (main and A2), 18, 22, 23, 24, 25, 26 | All legal transitions and their guards, including cancellation and both return paths | FR-4.4, FR-4.5 |
+| 7 | State machine | UC-17 (main and A2), 18, 22, 23, 24, 25, 26 | All legal transitions and their guards, including cancellation and both return paths | FR-4.4, FR-4.5, ✧ FR-2.6 |
 | 8 | Sequence | UC-31, UC-I6 | Main, A3, E1, E2, E3 | FR-6.3, FR-6.1 |
 
-**Coverage.** The figures above model **twenty-four of the twenty-eight** alternate and exception flows defined by UC-18, UC-24, UC-25, UC-26, and UC-31. UC-18, UC-24, and UC-26 are complete. Four flows are not drawn:
+**Coverage.** ✧ The figures above model **twenty-eight of the thirty-two** alternate and exception flows defined by UC-18, UC-24, UC-25, UC-26, and UC-31. UC-18, UC-24, and UC-26 are complete. The count rose by four because CR-01 gave UC-18 ten exception flows in place of six — every additional one a distinct way a register can be wrong — and Figure 4 draws all of them. The same four flows as in baseline B1 are not drawn, for the same reasons:
 
 | Not drawn | Why |
 |---|---|
@@ -847,9 +841,11 @@ stateDiagram-v2
 
 Every flow that *branches* — every alternate that does something different and every exception that refuses — is drawn. The four omissions either repeat a drawn flow over different input or are single-step refusals fully stated in the use case.
 
-Where a flow appears in more than one figure, the branch conditions are identical: Figures 2 and 5 model the same five UC-24 flows, and Figures 1 and 4 agree on every UC-18 branch they share. Figure 4 additionally draws E3, E4, and the `B29` line-selection choice that separates A1 (recompute the whole run) from A2 (recompute only stale lines) — the branch that realizes FR-4.3 and the `is_stale` column, and the one the sequence view has no natural place for.
+Where a flow appears in more than one figure, the branch conditions are identical: Figures 2 and 5 model the same five UC-24 flows, and ✧ Figures 1 and 4 agree on every UC-18 branch they share — both gates, both total refusals, and the rollback. Figure 4 additionally separates the two refusal points into distinct terminal states, which the sequence view nests inside its `alt` blocks and cannot show as clearly.
 
-**Business rules made visible.** BR-13 (computation order), BR-19 (taxable compensation base), BR-20 (employer shares), BR-22 and BR-23 (standing deductions and loans), BR-24 (reversal versus retroactive adjustment), BR-25 (net pay floor), BR-26 (audit in the same transaction), and BR-28 (separation of duty) all appear as concrete steps or guards rather than as prose the reader must take on trust.
+**Business rules made visible.** ✧ BR-37 (exact reconciliation, no tolerance), BR-38 (employee matching and completeness), BR-39 (import versioning and retention), BR-40 (decimal-string parse path, never a float), BR-20 (employer shares), BR-23 (loan balance decrement), BR-24 (reversal versus retroactive adjustment), BR-25 (net pay floor), BR-26 (audit in the same transaction), and BR-28 (separation of duty) all appear as concrete steps or guards rather than as prose the reader must take on trust.
+
+✧ **BR-13 no longer appears in any figure**, because the computation order it fixed now happens in a spreadsheet no diagram in this baseline can reach. It is retired in FRS §7.8, and the absence is deliberate rather than an omission.
 
 ---
 
@@ -859,8 +855,10 @@ Where a flow appears in more than one figure, the branch conditions are identica
 
 2. **Pair each sequence diagram with its activity diagram.** They answer different questions and a panel will ask both. The sequence diagram shows the components; the activity diagram shows who does what and where the flow branches.
 
-3. **Figure 1 is the centrepiece.** It contains the answer to problem P2 in a single view: the computation order, the statutory application, the version capture, and the all-or-nothing transaction. If the defense allows one diagram on screen while explaining why Excel had to go, use this one.
+3. **✧ Figure 1 is still the centrepiece, and it now answers a different question.** It contains the answer to the restated P2 in a single view: two total-refusal gates, the provenance capture, and the all-or-nothing transaction. It is no longer the diagram that explains why Excel had to go — Excel did not go. It is the diagram that explains what the system does about a payroll it did not compute. Show it beside Figure 4, whose three write-nothing stop states make the refusal behavior unmistakable.
 
 4. **Figure 7 is the cheapest to explain and the hardest to argue with.** A worksheet has no states, therefore no guards, therefore no enforceable separation of duty and no period lock. The state machine makes that contrast structural rather than rhetorical.
 
-5. **Two of the three remaining design artifacts now exist.** The entity relationship diagram is the [data model](./data-model.md), and the system architecture is the [system architecture](./system-architecture.md), whose §5 places the 14 participants of §1.4 into four layers alongside 21 further components the modelled use cases did not need. What remains is the class model — which follows from those 35 components and the 37 entities — and a data flow diagram if the department requires one.
+5. **✧ Two of the three remaining design artifacts now exist.** The entity relationship diagram is the [data model](./data-model.md), and the system architecture is the [system architecture](./system-architecture.md), whose §5 places the 15 participants of §1.4 into four layers alongside the further components the modelled use cases did not need. What remains is the class model — which follows from those components and the 39 entities — and a data flow diagram if the department requires one.
+
+6. **✧ A data flow diagram is now worth more than it was.** The system's boundary has a round trip through it: data leaves as a worksheet, is transformed outside, and returns as a register. That is precisely the shape a DFD renders well and a use case diagram renders awkwardly — Figure 5 of the use case model needed an out-of-boundary box and a departure from strict UML to say it. If the department requires a DFD at all, this baseline is the one where it earns its place.

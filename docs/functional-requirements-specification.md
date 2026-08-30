@@ -77,7 +77,7 @@ This document does **not** specify how the system is built. Screen layouts, data
 | **Gross pay** | Total earnings before any deduction. |
 | **Taxable compensation** | Gross pay less non-taxable items, used as the base for withholding tax. |
 | **Net pay** | Gross pay less total deductions; the amount payable to the employee. |
-| **Day factor** | The divisor converting an annual or monthly rate into a daily rate (e.g., 261, 313, 365). |
+| **Day factor** | ✧ The divisor converting an annual or monthly rate into a daily rate (e.g., 261, 313, 365). Defined here because the term appears in the retirement of `BR-02` and in OI-03; **the system neither holds nor applies one** — it is the accounting office's parameter. |
 | **Statutory deduction** | A deduction mandated by law: SSS, PhilHealth, Pag-IBIG, and withholding tax. |
 | **Effectivity date** | The date from which a reference table or rate applies. |
 | **De minimis benefits** | Benefits exempt from income tax up to limits set by the BIR. |
@@ -174,7 +174,7 @@ A module names where a function is **administered**, not everywhere its effect i
 | **Payroll Officer** | ✧ Prepares payroll. Encodes employee and attendance data, exports the input worksheet, imports the accounting office's completed register, resolves exceptions, submits for review. The system's primary user. **The accounting office operates the system in this role** — CR-01 added no actor. | Comfortable with Excel; not technical. | Daily during a cut-off; heavy at period end. |
 | **Approver** | Reviews and approves or returns payroll runs. Typically HR Head, Finance Officer, or owner. Does not encode. | Basic computer literacy. | Once or twice per pay period. |
 | **Administrator** | Maintains user accounts, roles, reference data, statutory tables, and backups. | Highest of the four; may be an external IT contact. | Occasional; monthly or on rate changes. |
-| **Viewer** | Read-only access to registers and reports for management or audit. Cannot encode, compute, or approve. | Basic. | Ad hoc. |
+| **Viewer** | Read-only access to registers and reports for management or audit. ✧ Cannot encode, import, or approve. | Basic. | Ad hoc. |
 | **System Clock** | Supporting, non-human. Triggers scheduled behavior with no user present: the backup schedule of NFR-5.4 and the session timeout of BR-32. | — | Continuous. |
 
 Four actors are human; the System Clock is a supporting non-human actor and holds no permissions in FR-6.2. Employees are **not** system users in this release. They receive printed or PDF payslips from the payroll office.
@@ -205,7 +205,7 @@ A change to the topology would reopen both.
 | C-01 | ✧ Statutory schedule data and register column mappings must be data-driven, not hardcoded. A change in an SSS, PhilHealth, Pag-IBIG, or BIR schedule (FR-2.3), or in the accounting office's register layout (FR-2.8, BR-41), must be satisfiable by editing reference data, without modifying source code. |
 | C-02 | All monetary values are stored in a fixed-point or decimal type. Binary floating-point types must not be used for currency (see BR-01). |
 | C-03 | The system must operate correctly with no internet connection available. |
-| C-04 | Historical payroll runs must remain reproducible: a run computed under a superseded rate table must continue to display the figures it was computed with. |
+| C-04 | ✧ Historical payroll runs must remain reproducible: a finalized run must continue to display the figures it was accepted with — those of its bound import version — after any compensation profile version, statutory schedule, or register column mapping it referenced has been superseded. What is reproduced is a **stored** payroll, not a computation the system could repeat: the system re-derives nothing on read (FR-2.10, DR-2.2, BR-39). |
 | C-05 | The system must be operable by staff whose prior tool was Excel, with training measured under NFR-6.6. |
 
 ## 2.6 Assumptions and dependencies
@@ -216,7 +216,7 @@ A change to the topology would reopen both.
 | A-02 | Attendance is captured by an existing means that can produce a file export, or is encoded manually (OI-04). |
 | A-03 | The client provides the current statutory contribution schedules and their effectivity dates for initial reference-data loading. |
 | A-04 | One approver is sufficient; multi-level approval is not required (OI-09). |
-| A-05 | The client's pay frequency and day factor are fixed for the duration of the project (OI-02, OI-03). |
+| A-05 | ✧ The client's pay frequency is fixed for the duration of the project (OI-02). The day factor left this assumption with `BR-02`: the system holds none, and it is the accounting office's parameter (OI-03, closed). |
 
 ---
 
@@ -323,7 +323,7 @@ The system shall allow maintenance of the lists that employee and payroll record
 **Behavior**
 
 1. The Administrator adds, edits, and deactivates entries in each reference list.
-2. Each earning type is flagged taxable or non-taxable, and each is flagged as included or excluded from the base for 13th month pay (BR-12, BR-21).
+2. Each earning type is flagged taxable or non-taxable, and each is flagged as included or excluded from the base for 13th month pay (BR-12). ✧ The flag classifies an imported earning line for reporting; the system derives no 13th-month figure from it.
 3. Each deduction type is flagged statutory or non-statutory and, if non-statutory, whether it participates in the net-pay floor check (BR-25).
 4. A reference entry that is in use by any record may be deactivated but not deleted.
 
@@ -479,7 +479,7 @@ The system shall hold each employee's pay basis, rates, recurring allowances, an
 1. The user records the pay basis — monthly, daily, or hourly — and the corresponding basic rate.
 2. ✧ The system stores the pay basis and basic rate as recorded. It derives no other rate — rate derivation moved to the accounting office with the computation (BR-02 retired), and the basic rate is supplied to it through the input worksheet of FR-2.11.
 3. The user records recurring earnings (e.g., transportation, meal, or cost-of-living allowance), each referencing an earning type from FR-0.4, with an amount and an effectivity date.
-4. The user records recurring deductions and loan accounts, each with a principal, an amortization amount, a start period, and a term. The system tracks the outstanding balance and stops the deduction when the balance reaches zero (BR-23).
+4. ✧ The user records recurring deductions and loan accounts, each with a principal, an amortization amount, a start period, and a term. The system supplies the amortization and the open balance to the accounting office through the input worksheet of FR-2.11, reduces the outstanding balance by what each accepted register actually deducted, and stops supplying the amortization once the balance reaches zero. **It does not determine the amount deducted** (BR-23).
 5. The user records the statutory coverage flags and, where applicable, the fixed contribution basis for each agency.
 6. A rate change is recorded as a new dated entry rather than an overwrite, so historical runs remain reproducible (C-04, BR-08).
 
@@ -487,9 +487,9 @@ The system shall hold each employee's pay basis, rates, recurring allowances, an
 
 **Acceptance criteria**
 
-- AC-1.2.1 Derived daily and hourly rates match BR-02 for the configured day factor.
-- AC-1.2.2 Recurring allowances and deductions appear in the next payroll run without re-entry.
-- AC-1.2.3 A loan deduction stops automatically in the period its outstanding balance reaches zero, with no over-deduction.
+- AC-1.2.1 ✧ The pay basis and basic rate are stored exactly as recorded, and no daily or hourly rate is derived from them anywhere in the system; the basic rate reaches the accounting office through the input worksheet of FR-2.11 unchanged.
+- AC-1.2.2 ✧ Recurring allowances and deductions appear in the next run's input worksheet without re-entry.
+- AC-1.2.3 ✧ A loan's amortization stops appearing in the input worksheet in the period its outstanding balance reaches zero, and a register deducting more than the remaining balance is refused. No over-deduction is recorded.
 - AC-1.2.4 A rate change effective mid-year does not alter the figures of any already-finalized run.
 - AC-1.2.5 ✧ An employee with no compensation profile is flagged by FR-4.1 (EX-02) at worksheet export and again at import, and cannot hold an accepted payroll line.
 
@@ -554,7 +554,7 @@ The system shall load daily time records from a file export and restrict manual 
 
 **Priority** Must · **Source** P1 · **Objective** OBJ 1 · **Actor** Payroll Officer (file), Approver (approve)
 
-The system shall record leave applications, maintain leave balances, and post approved leaves to the covering payroll period automatically.
+✧ The system shall record leave applications, maintain leave balances, and carry approved leaves into the covering period's input worksheet automatically, marked paid or unpaid. It posts no earning and no deduction — what a leave day is worth in pay is the accounting office's computation.
 
 **Behavior**
 
@@ -571,7 +571,7 @@ The system shall record leave applications, maintain leave balances, and post ap
 
 - AC-1.4.1 ✧ An approved leave within a cut-off appears in that period's input worksheet, marked paid or unpaid, without separate encoding.
 - AC-1.4.2 The leave balance after approval equals the prior balance less the days approved.
-- AC-1.4.3 A paid leave day produces no reduction in basic pay; an unpaid leave day reduces it per BR-11.
+- AC-1.4.3 ✧ Every approved leave day reaches the input worksheet carrying its leave type's paid or unpaid flag, so the two are distinguishable without reference to the leave records. The system reduces no basic pay for either.
 - AC-1.4.4 Overlapping approved leave for one employee is refused.
 - AC-1.4.5 Leave records and payroll deductions reconcile with no second encoding pass.
 
@@ -731,7 +731,7 @@ The system shall verify the net pay of every imported payroll line against that 
 1. On import, the system verifies for every payroll line that net pay equals gross pay less total deductions, to the centavo (BR-37).
 2. ✧ The system offers no field, screen, or function by which a stored net pay, gross pay, or deduction total may be typed over or edited in place. Every change to a stored figure is either a superseding import or an adjustment line, and both are recorded.
 3. The system flags a payroll line whose net pay is zero, negative, or below the configured floor for review under FR-4.1 (BR-25).
-4. The system computes and displays the run totals — total gross, total by deduction type, and total net — as sums of the stored payroll lines.
+4. ✧ The system sums and displays the run totals — total gross, total by deduction type, and total net — from the stored payroll lines. The summation is arithmetic over imported figures for display; it originates none of them (BR-18).
 5. Run totals are derived for display and reporting only, and are never stored as figures that could diverge from their lines.
 
 **Rules** BR-01, BR-18, BR-25, BR-37
@@ -1200,7 +1200,7 @@ The system shall generate payroll, remittance, and transmittal reports from stor
 | Pag-IBIG remittance | Employee and employer contributions per employee for the month, with Pag-IBIG MID | Must |
 | Withholding tax report | Taxable compensation and tax withheld per employee for the period | Must |
 | Bank transmittal listing | Employee name, account number, and net pay for the period, in the client's bank format | Must |
-| 13th month pay report | Basic salary earned per employee for the year and the 13th month pay due (BR-21) | Must |
+| 13th month pay report | ✧ Basic salary earned per employee for the year, summed from the imported earning lines flagged for the 13th-month base (BR-12), beside the figures imported from that period's 13th-month run. The system derives no 13th-month amount (OI-14) | Must |
 | Leave ledger | Credits earned, used, and remaining per employee per leave type | Should |
 | Loan ledger | Principal, amortization, amounts deducted, and outstanding balance per employee | Should |
 | Payroll cost comparison | Period-over-period movement by department | Could |
@@ -1578,4 +1578,4 @@ Each item below changes at least one requirement. None blocks the start of devel
 |---|---|---|---|
 | 1.0 | August 30, 2026 | — | Initial specification derived from the Problem-to-Requirements Matrix. 25 traced functional requirements specified; 4 foundation requirements added (§1.5); 34 business rules, 24 data entities, and 10 open items documented. |
 | 1.1 | August 30, 2026 | — | **Baseline B1.** Consistency audit rounds 1 and 2 resolved (22 + 8 findings). `FR-6.3` added — ledger-anchored integrity verification — with `BR-35`, `BR-36`, and `AC-6.3.1`–`AC-6.3.7`; the matrix carries it as P6's seventh requirement, so matrix-traced functional requirements rise from 25 to 26. `AC-6.1.5`, `AC-4.4.6`, `AC-4.4.7`, `AC-4.5.5`, `AC-6.2.5` added. `DR-2.1`–`DR-2.4` brought into traceability. `NFR-3.5`, `NFR-5.5`, `NFR-6.3` and UC-26 raised to `Must`. `AC-4.1.4` given a 15% threshold. `For Review` return corrected to land in `Returned`. Viewer read access narrowed to payroll outputs. `OI-08` closed by the system architecture; `OI-11` opened and remains the sole outstanding design question. Totals: 30 FR, 8 gated NFR, 5 DR, 36 business rules, 43 requirement items. |
-| 1.2 | August 30, 2026 | — | **Baseline B2 — [CR-01](./change-request-cr-01.md): payroll computation retained by the accounting office.** The client decided the accounting office continues to compute; the system receives a completed register instead. **Retired:** `FR-2.1`, `FR-2.2`, `NFR-2.7`; exception `EX-09`; business rules `BR-02`, `BR-05`, `BR-11`, `BR-13`, `BR-15`, `BR-16`, `BR-17`, `BR-19`, `BR-21`, `BR-22` (§7.8). No identifier reused or renumbered. **Added:** `FR-2.8` register import, `FR-2.9` reconciliation and completeness, `FR-2.10` import versioning, `FR-2.11` input worksheet export, `NFR-2.12` transcription fidelity; exceptions `EX-11`–`EX-14`; rules `BR-37`–`BR-41`; entities `PayrollImport` and `ImportColumnMap`. **Reworded:** `FR-2.3` (statutory tables now for remittance employer shares only), `FR-2.4` (records rather than applies), `FR-2.5` (net pay integrity check — `AC-2.5.1` inverted), `FR-2.6` (import rather than compute), `FR-4.1` (exception rules rewritten, now the primary defence), `FR-4.3` (correction by adjustment or superseding import), `BR-14`, `BR-18`, `BR-20`, `BR-23`, `BR-25`, `BR-36`, `DR-2.1`, `DR-2.2`. Module **M4** renamed *Payroll Computation* → *Payroll Intake*. §1.2 scope, §2.1 perspective, §2.2 module summary, §5, §9, §10, §11 revised. `OI-03` closed; `OI-02` and `OI-05` reduced; `OI-12`–`OI-16` opened. Totals: **32 FR, 8 gated NFR, 5 DR, 31 live business rules, 13 exception rules, 45 requirement items.** |
+| 1.2 | August 30, 2026 | — | **Baseline B2 — [CR-01](./change-request-cr-01.md): payroll computation retained by the accounting office.** The client decided the accounting office continues to compute; the system receives a completed register instead. **Retired:** `FR-2.1`, `FR-2.2`, `NFR-2.7`; exception `EX-09`; business rules `BR-02`, `BR-05`, `BR-11`, `BR-13`, `BR-15`, `BR-16`, `BR-17`, `BR-19`, `BR-21`, `BR-22` (§7.8). No identifier reused or renumbered. **Added:** `FR-2.8` register import, `FR-2.9` reconciliation and completeness, `FR-2.10` import versioning, `FR-2.11` input worksheet export, `NFR-2.12` transcription fidelity; exceptions `EX-11`–`EX-14`; rules `BR-37`–`BR-41`; entities `PayrollImport` and `ImportColumnMap`. **Reworded:** `FR-2.3` (statutory tables now for remittance employer shares only), `FR-2.4` (records rather than applies), `FR-2.5` (net pay integrity check — `AC-2.5.1` inverted), `FR-2.6` (import rather than compute), `FR-4.1` (exception rules rewritten, now the primary defence), `FR-4.3` (correction by adjustment or superseding import), `BR-14`, `BR-18`, `BR-20`, `BR-23`, `BR-25`, `BR-36`, `DR-2.1`, `DR-2.2`; `FR-1.4` (carries leave into the worksheet rather than posting it), `C-04` (reproducibility of a stored payroll, not of a repeatable computation), `A-05` (day factor removed), `AC-1.2.1`–`AC-1.2.3`, `AC-1.4.3`, the `FR-0.4` 13th-month flag, the `FR-5.3` 13th-month report row, and the §1.3 day-factor entry — each of which still read as though the system derived a payroll value. Module **M4** renamed *Payroll Computation* → *Payroll Intake*. §1.2 scope, §2.1 perspective, §2.2 module summary, §5, §9, §10, §11 revised. `OI-03` closed; `OI-02` and `OI-05` reduced; `OI-12`–`OI-16` opened. Totals: **32 FR, 8 gated NFR, 5 DR, 31 live business rules, 13 exception rules, 45 requirement items.** |

@@ -65,8 +65,8 @@ An architecture is an answer to constraints. These are the ones that actually sh
 | **No internet connection for any function** | C-03, SW-04 | Rules out any hosted or cloud component. Every element runs inside the client's premises (§3) |
 | **At least four simultaneous users** | NFR-7.1 | Rules out a single-workstation deployment. Requires a shared database with real transaction isolation (§3, §6.3) |
 | **Statutory logic data-driven, never hardcoded** | C-01 | `StatutoryScheduleService` resolves schedules by effectivity date at run time; no agency rule appears in source (§6.1) |
-| **Historical runs reproducible after rate changes** | C-04, DR-2.2 | Version binding at computation time, enforced in the domain layer and stored as foreign keys (§6.2) |
-| **Decimal money, never binary floating point** | C-02, BR-01, DR-2.3 | `DECIMAL(13,2)` in MySQL and PHP `BCMath` in the computation path — never a PHP float (§6.4) |
+| **Historical runs reproducible after rate changes** | C-04, DR-2.2 | ✧ Version binding at **import** time, enforced in the domain layer and stored as foreign keys (§6.2) |
+| **Decimal money, never binary floating point** | C-02, BR-01, DR-2.3 | ✧ `DECIMAL(13,2)` in MySQL and PHP `BCMath` on the parse and comparison path — never a PHP float (§6.4) |
 | **Preparer cannot approve** | BR-28, FR-6.2, AC-6.2.1 | `AuthorizationService` is consulted at every entry point, and the rule is *also* a database constraint (§7.2) |
 | **Audit written in the same transaction as the change** | BR-26, BR-27, FR-6.1 | `AuditService` participates in the caller's transaction; `AUDIT_LOG` is append-only (§6.5) |
 | **Encrypted client–server communication** | CM-01 | HTTPS with a locally-issued certificate, no public CA and no internet dependency (§7.1) |
@@ -430,8 +430,8 @@ Nothing recomputes on read; nothing could. A payslip reprinted three years later
 | Concern | Mechanism |
 |---|---|
 | Two users editing one employee | Optimistic locking on the row version; the second save is refused with a reload prompt, never silently merged |
-| Two users computing one run | The run's state is read inside the transaction that changes it. `Draft → For Review` is a guarded update, so the second submission finds the state already moved and is refused (AC-4.4.1) |
-| A computation and a correction colliding | `is_stale` is set inside the correcting transaction. The engine reads the stale set at the start of its own transaction, so a correction arriving mid-run is picked up by the next recomputation rather than half-applied to this one |
+| ✧ Two users advancing one run | The run's state is read inside the transaction that changes it. `Draft → For Review` is a guarded update, so the second submission finds the state already moved and is refused (AC-4.4.1) |
+| ✧ An import and a correction colliding | An import is one transaction that replaces every payroll line in the run (AC-2.8.7), and a correction to a source record — attendance, leave, a compensation profile — writes no payroll line at all. The two cannot half-apply to each other. A correction made after an import simply is not in that import: it reaches payroll only through a re-export and a superseding import (UC-22), and the superseded version is retained (BR-39). There is no stale flag and no recomputation to schedule |
 | Approve and finalize racing | `PAYROLL_RUN.run_status` is checked and updated in one statement under `SERIALIZABLE` isolation for transition operations; every other read uses `REPEATABLE READ` |
 
 ## 6.4 C-02 — decimal arithmetic end to end
@@ -457,7 +457,7 @@ So the exposure increased at the same moment the detection mechanism was removed
 - **AD-18** gives it a mechanism, in the same way AD-07 gave BR-01 one: the parse path has no float in it to misuse.
 - **NFR-2.12** tests it, over the same thirty employees and three periods NFR-2.7 used — but comparing stored values against the source file rather than against a manual computation, and including a seeded-alteration pass so a comparison that has silently stopped working is detected.
 
-A cent lost to a float here would now be lost silently in *both* directions: the system would neither compute the right answer nor notice that it had stored the wrong one. This is the most consequential implementation risk in the revised baseline.
+✧ A cent lost to a float here would now be lost silently and completely: there is no computation of the system's own to disagree with the stored figure, and a one-centavo parse error that is applied consistently reconciles against itself. This is the most consequential implementation risk in the revised baseline.
 
 ## 6.5 BR-26, BR-27 — audit that cannot drift from the change
 
@@ -779,7 +779,7 @@ Every selection below is fixed. Where two products would both have served, the a
 | **Views** | Blade + Alpine.js | Alpine 3.x | AD-06. Server-rendered, progressive enhancement |
 | **Asset build** | Vite | bundled | **Build time only.** Compiled CSS and JS are deployed as files; no Node runtime and no CDN on the server (C-03, AD-16) |
 | **Database** | MySQL | 8.4 LTS | AD-03. InnoDB, `utf8mb4`, `DECIMAL(13,2)` for money. MariaDB 11.4 is compatible with every feature used here |
-| **Money arithmetic** | BCMath | bundled with PHP | §6.4. No native float appears in the computation path |
+| **Money arithmetic** | BCMath | bundled with PHP | ✧ §6.4. No native float appears on the parse, comparison, or storage path |
 | **PDF** | DomPDF via `barryvdh/laravel-dompdf` | 3.x | Pure PHP with no external binary to install or keep patched on an offline server. Payslips and reports are simple table layouts, which is what DomPDF does well (SW-02) |
 | **Spreadsheet** | PhpSpreadsheet | 2.x | Reads the `.xlsx` and CSV attendance template (SW-01) and writes tabular exports (SW-02) |
 | **Queue** | Laravel queue, `database` driver | bundled | Carries anchor transmission and retries (§6.7). The database driver avoids adding Redis for a workload of roughly 400 jobs a year |

@@ -28,7 +28,7 @@
 
 ## 1.1 Why these use cases
 
-The use case model specifies thirty-one use cases. Five are modelled here: four carry nearly all the risk in the payroll cycle, and the fifth is the integrity check that proves the rest were not altered.
+✧ The use case model specifies thirty-three primary use cases and seven included ones. Five are modelled here: four carry nearly all the risk in the payroll cycle, and the fifth is the integrity check that proves the rest were not altered.
 
 | Use case | Why it is modelled |
 |---|---|

@@ -20,7 +20,7 @@
 | Diagrams | 8 |
 | Normal form | Third normal form, with two declared exceptions (§6.2) |
 
-> ✧ **What changed in 1.2.** The client decided the accounting office continues to compute. Two entities were added — `PAYROLL_IMPORT` and `IMPORT_COLUMN_MAP` — to carry the provenance of figures that now originate outside the system. `PAYROLL_LINE` gained `payroll_import_id` and lost `is_computed` and `is_stale`. **No entity was dropped.** `STATUTORY_SCHEDULE` and `STATUTORY_BRACKET` survive in reduced scope, for remittance employer shares only.
+> ✧ **What changed in 1.2.** The client decided the accounting office continues to compute. Two entities were added — `PAYROLL_IMPORT` and `IMPORT_COLUMN_MAP` — to carry the provenance of figures that now originate outside the system. `PAYROLL_LINE` gained `payroll_import_id` and lost `is_computed` and `is_stale`. **No entity was dropped.** `STATUTORY_SCHEDULE` and `STATUTORY_BRACKET` survive in reduced scope, for remittance employer shares only. `COMPENSATION_PROFILE` lost `day_factor_used` and its derived rate columns with `BR-02`, and §6.2 no longer explains a payroll line's figures as values the system derived — they are **imported**, and the sums over their children are a check on them rather than a way of producing them.
 
 ---
 
@@ -391,7 +391,7 @@ erDiagram
 
 **Figure 4.** *Area B — Compensation and Loans*
 
-`COMPENSATION_PROFILE` is a dated version chain, never an overwrite (BR-08). It stores `day_factor_used` alongside the derived rates: if the organization changes its day factor next year, runs computed under the old one still explain their own arithmetic.
+`COMPENSATION_PROFILE` is a dated version chain, never an overwrite (BR-08). ✧ It stores the pay basis and the basic rate **as recorded and nothing derived from them** — `day_factor_used` and the derived daily and hourly rate columns went with `BR-02` (§5.4, OI-03). What the chain buys is unchanged: a run finalized before a rate change still resolves to the version in force for its cut-off, which is C-04 and AC-1.2.4.
 
 `LOAN_AMORTIZATION` links a loan to the specific payroll line that deducted it, which is what makes the loan ledger reconcile to the payroll register down to the centavo (AC-1.2.3).
 
@@ -609,7 +609,7 @@ erDiagram
         datetime issued_at
     }
 
-    PAYROLL_PERIOD ||--o{ PAYROLL_RUN : "is computed by"
+    PAYROLL_PERIOD ||--o{ PAYROLL_RUN : "is paid for by"
     PAYROLL_RUN ||--|{ PAYROLL_LINE : "contains"
     PAYROLL_LINE ||--|{ EARNING_LINE : "itemizes"
     PAYROLL_LINE ||--o{ DEDUCTION_LINE : "itemizes"
@@ -632,7 +632,7 @@ This area is the reason the whole model exists, and three choices in it carry th
 
 ✧ `is_stale` and `is_computed` were **removed** from `PAYROLL_LINE`. Both existed to track a line whose inputs had changed since it was last computed. Nothing is computed, so nothing goes stale: a line is either the current import's or it has been superseded wholesale by a later one (BR-39). A boolean that can never become true is worse than no column, because a reader assumes it means something.
 
-**`run_type` participates in the uniqueness of a run.** A pay period may carry more than one run without ambiguity, provided the runs differ in type: the regular run, and beside it the 13th-month or final-pay run that UC-17 A1 describes. This is why the unique constraint in §5.1 is `payroll_period_id + population_scope + run_type` rather than the first two columns alone — the narrower key would have refused exactly the special runs the use case permits. Which earning types a special run computes follows from `run_type`; no attribute enumerates them, because the run type already determines the answer and a second place to state it would be a second place to get it wrong.
+**`run_type` participates in the uniqueness of a run.** A pay period may carry more than one run without ambiguity, provided the runs differ in type: the regular run, and beside it the 13th-month or final-pay run that UC-17 A1 describes. This is why the unique constraint in §5.1 is `payroll_period_id + population_scope + run_type` rather than the first two columns alone — the narrower key would have refused exactly the special runs the use case permits. ✧ Which earning types a special run carries follows from `run_type` — it selects the register the accounting office produces for that run, not a set of formulas the system evaluates. No attribute enumerates them, because a second place to state it would be a second place to get it wrong.
 
 **Cancelled runs are excluded from the unique key.** The constraint applies `where not cancelled`, so a run abandoned in `Draft` (UC-17 A2) stops holding its period, population, and run type and a replacement can be created. The cancelled row itself is kept — `Cancelled` is a terminal status in `run_status`, not a deletion — so the abandoned attempt and the reason for it remain in `RUN_TRANSITION`.
 
@@ -930,17 +930,17 @@ The FRS acceptance criterion AC-1.6.2 — *no employee attribute is duplicated i
 
 Both are deliberate, both are justified by a stated requirement, and a panel will ask about them.
 
-**1. Derived values are stored on `PAYROLL_LINE` and `ATTENDANCE_RECORD`.**
+**1. ✧ Figures are stored on `PAYROLL_LINE` and `ATTENDANCE_RECORD` that are also obtainable from their children.**
 
-`PAYROLL_LINE` stores `gross_pay`, `total_deductions`, and `net_pay`, all derivable from the child lines. `ATTENDANCE_RECORD` stores `hours_worked`, `late_minutes`, and `overtime_hours`, all derivable from the punches and the schedule.
+`PAYROLL_LINE` stores `gross_pay`, `total_deductions`, and `net_pay`, each of which also sums from the child lines. `ATTENDANCE_RECORD` stores `hours_worked`, `late_minutes`, and `overtime_hours`, all derivable from the punches and the schedule.
 
-*Justification.* C-04 requires a finalized run to remain reproducible after rates, schedules, and work schedules change. If net pay were computed on read, a payslip reprinted in 2029 for a 2026 period would reflect 2029 rules — exactly the failure the spreadsheet has. Storing the result freezes it. The check constraints in §5.2 keep the stored totals consistent with their children, so the denormalization cannot drift.
+*Justification.* ✧ The two cases differ since CR-01, and only the second is a denormalization in the usual sense. `PAYROLL_LINE`'s figures are **imported**, not derived: they are stored because that is how they arrived, and the sums over the child lines are a *check* on them (BR-37, §5.2), not an alternative way of producing them. The system could not re-derive them on read even if it wanted to — it never held the arithmetic. `ATTENDANCE_RECORD`'s hours are genuinely derivable, and are stored rather than re-derived because C-04 requires a finalized run to keep displaying the figures it was accepted with: hours re-derived on read in 2029 would reflect the 2029 work schedule, restating a 2026 period — exactly the failure the spreadsheet has. The check constraints in §5.2 keep the stored totals consistent with their children, so neither can drift.
 
 **2. `PAYROLL_RUN` stores run totals.**
 
 `total_gross`, `total_deductions`, `total_net`, and `employee_count` are aggregates over `PAYROLL_LINE`.
 
-*Justification.* NFR-5.5 requires any register or report to display within one minute. Re-aggregating thousands of lines on every register open, report generation, and dashboard load would not meet it. The totals are written once at computation and once at finalization, and are then immutable along with the run.
+*Justification.* NFR-5.5 requires any register or report to display within one minute. Re-aggregating thousands of lines on every register open, report generation, and dashboard load would not meet it. ✧ The totals are written at import, rewritten in full by any superseding import (BR-39), and fixed at finalization, after which they are immutable along with the run.
 
 ## 6.3 Deliberate version chains
 
@@ -979,15 +979,15 @@ A cascade delete anywhere would let one action silently destroy payroll history.
 |---|---|
 | `PAYROLL_LINE (payroll_run_id, employee_id)` | Register display, UC-21 |
 | `PAYROLL_LINE (employee_id, payroll_run_id)` | Employee payroll history, UC-29, NFR-5.5 |
-| `ATTENDANCE_RECORD (employee_id, work_date)` | Computation input retrieval, UC-18 |
+| `ATTENDANCE_RECORD (employee_id, work_date)` | ✧ Worksheet assembly and import-time exception checks, UC-32, UC-18 |
 | `PAYROLL_RUN (payroll_period_id, run_status)` | Pending-run queues, UC-24 |
 | `EARNING_LINE (payroll_line_id)`, `DEDUCTION_LINE (payroll_line_id)` | Payslip and breakdown rendering, UC-27 |
-| `STATUTORY_SCHEDULE (agency, effective_from, effective_to)` | Schedule selection, UC-I5, executed once per line per agency |
+| `STATUTORY_SCHEDULE (agency, effective_from, effective_to)` | ✧ Schedule selection, UC-I5 — executed only where a remittance report must derive an employer share the register did not carry (FR-2.3) |
 | `AUDIT_LOG (occurred_at)`, `AUDIT_LOG (user_id, occurred_at)`, `AUDIT_LOG (entity_name, entity_id)` | Audit browsing and filtering, UC-06 |
 | `EXCEPTION_INSTANCE (payroll_run_id, severity, is_resolved)` | Submission gate check, UC-23 |
 | `EMPLOYEE (employee_no)`, `EMPLOYEE (last_name, first_name)` | Employee search, UC-08, UC-29 |
 
-`AUDIT_LOG` grows fastest — one row per state change, so a period computing 100 employees writes several hundred rows. Its indexes and a retention plan under DR-2.1 are the two things that keep NFR-5.5 true in year three.
+`AUDIT_LOG` grows fastest — one row per state change, so a period covering 100 employees writes several hundred rows. Its indexes and a retention plan under DR-2.1 are the two things that keep NFR-5.5 true in year three.
 
 ## 7.4 Retention
 
@@ -1078,7 +1078,7 @@ Carried from FRS §11. Each changes a column or a constraint, not the model's sh
 
 2. **Present Figure 2 with the three bolded constraints from §5.2.** The diagram shows the structure; the constraints show the control. `approved_by <> submitted_by`, non-overlapping statutory effectivity, and no loan over-deduction are three things a spreadsheet cannot enforce at all, and they are the clearest data-level answer to problem P6.
 
-3. **§6.2 is the section to rehearse.** Panels reliably ask why derived values are stored. The answer is C-04 — reproducibility of a finalized run after the rules change — and it is a better answer than the usual "for performance."
+3. **§6.2 is the section to rehearse.** Panels reliably ask why a figure obtainable from its children is stored anyway. ✧ Since CR-01 the answer splits, and saying so is the stronger answer: a payroll line's figures are stored because they were **imported** — the system never held the arithmetic to reproduce them — while an attendance record's hours are stored under C-04, so that a finalized run keeps displaying what it was accepted with after a work schedule changes. Neither answer is "for performance"; that one belongs to the run totals alone.
 
 4. **The version-chain pattern in §6.3 is worth one slide.** It is the structural difference between this system and the client's worksheets, where editing a rate silently restates history.
 

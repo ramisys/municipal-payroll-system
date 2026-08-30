@@ -391,7 +391,7 @@ erDiagram
 
 **Figure 4.** *Area B — Compensation and Loans*
 
-`COMPENSATION_PROFILE` is a dated version chain, never an overwrite (BR-08). It stores `day_factor_used` alongside the derived rates: if the organization changes its day factor next year, runs computed under the old one still explain their own arithmetic.
+`COMPENSATION_PROFILE` is a dated version chain, never an overwrite (BR-08).
 
 `LOAN_AMORTIZATION` links a loan to the specific payroll line that deducted it, which is what makes the loan ledger reconcile to the payroll register down to the centavo (AC-1.2.3).
 
@@ -609,7 +609,7 @@ erDiagram
         datetime issued_at
     }
 
-    PAYROLL_PERIOD ||--o{ PAYROLL_RUN : "is computed by"
+    PAYROLL_PERIOD ||--o{ PAYROLL_RUN : "is paid for by"
     PAYROLL_RUN ||--|{ PAYROLL_LINE : "contains"
     PAYROLL_LINE ||--|{ EARNING_LINE : "itemizes"
     PAYROLL_LINE ||--o{ DEDUCTION_LINE : "itemizes"
@@ -632,7 +632,7 @@ This area is the reason the whole model exists, and three choices in it carry th
 
 ✧ `is_stale` and `is_computed` were **removed** from `PAYROLL_LINE`. Both existed to track a line whose inputs had changed since it was last computed. Nothing is computed, so nothing goes stale: a line is either the current import's or it has been superseded wholesale by a later one (BR-39). A boolean that can never become true is worse than no column, because a reader assumes it means something.
 
-**`run_type` participates in the uniqueness of a run.** A pay period may carry more than one run without ambiguity, provided the runs differ in type: the regular run, and beside it the 13th-month or final-pay run that UC-17 A1 describes. This is why the unique constraint in §5.1 is `payroll_period_id + population_scope + run_type` rather than the first two columns alone — the narrower key would have refused exactly the special runs the use case permits. Which earning types a special run computes follows from `run_type`; no attribute enumerates them, because the run type already determines the answer and a second place to state it would be a second place to get it wrong.
+**`run_type` participates in the uniqueness of a run.** A pay period may carry more than one run without ambiguity, provided the runs differ in type: the regular run, and beside it the 13th-month or final-pay run that UC-17 A1 describes. This is why the unique constraint in §5.1 is `payroll_period_id + population_scope + run_type` rather than the first two columns alone — the narrower key would have refused exactly the special runs the use case permits. Which earning types a special run receives in its imported register follows from `run_type`; no attribute enumerates them, because the run type already determines the answer and a second place to state it would be a second place to get it wrong.
 
 **Cancelled runs are excluded from the unique key.** The constraint applies `where not cancelled`, so a run abandoned in `Draft` (UC-17 A2) stops holding its period, population, and run type and a replacement can be created. The cancelled row itself is kept — `Cancelled` is a terminal status in `run_status`, not a deletion — so the abandoned attempt and the reason for it remain in `RUN_TRANSITION`.
 

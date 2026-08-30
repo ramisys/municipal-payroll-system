@@ -28,7 +28,7 @@
 
 ## 1.1 Why these use cases
 
-The use case model specifies thirty-one use cases. Five are modelled here: four carry nearly all the risk in the payroll cycle, and the fifth is the integrity check that proves the rest were not altered.
+The use case model specifies thirty-three use cases. Five are modelled here: four carry nearly all the risk in the payroll cycle, and the fifth is the integrity check that proves the rest were not altered.
 
 | Use case | Why it is modelled |
 |---|---|
@@ -38,7 +38,7 @@ The use case model specifies thirty-one use cases. Five are modelled here: four 
 | **UC-26 Reverse finalized payroll run** | The only way out of `Finalized`, and the one path that must leave permanent evidence. Modelled in the activity view alongside UC-25 (Figure 6). |
 | **UC-31 Verify payroll record integrity** | Where the system is asked to prove a stored record has not changed. Its three outcomes must stay distinct — a mismatch, a pending anchor, and an unreachable ledger mean different things (Figure 8). |
 
-The remaining twenty-six use cases are adequately specified by their main success scenarios in the use case model. Drawing all of them would produce volume, not clarity.
+The remaining twenty-eight use cases are adequately specified by their main success scenarios in the use case model. Drawing all of them would produce volume, not clarity.
 
 ## 1.2 What each diagram type shows
 

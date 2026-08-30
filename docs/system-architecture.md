@@ -40,7 +40,7 @@ Diagrams are Mermaid, consistent with the rest of the document set. Components a
 
 ## 1.3 Relationship to the behavioral document
 
-Behavioral §1.4 names **14 participants**. Those 14 are the components the four modelled use cases needed — not the system's full inventory. This document specifies **35**, of which those 14 are a subset with their names and responsibilities unchanged.
+Behavioral §1.4 names **17 participants**. Those 17 are the components the four modelled use cases needed — not the system's full inventory. This document specifies **38**, of which those 17 are a subset with their names and responsibilities unchanged.
 
 | Layer | Components | Of which named in behavioral §1.4 |
 |---|:---:|:---:|
@@ -65,8 +65,8 @@ An architecture is an answer to constraints. These are the ones that actually sh
 | **No internet connection for any function** | C-03, SW-04 | Rules out any hosted or cloud component. Every element runs inside the client's premises (§3) |
 | **At least four simultaneous users** | NFR-7.1 | Rules out a single-workstation deployment. Requires a shared database with real transaction isolation (§3, §6.3) |
 | **Statutory logic data-driven, never hardcoded** | C-01 | `StatutoryScheduleService` resolves schedules by effectivity date at run time; no agency rule appears in source (§6.1) |
-| **Historical runs reproducible after rate changes** | C-04, DR-2.2 | Version binding at computation time, enforced in the domain layer and stored as foreign keys (§6.2) |
-| **Decimal money, never binary floating point** | C-02, BR-01, DR-2.3 | `DECIMAL(13,2)` in MySQL and PHP `BCMath` in the computation path — never a PHP float (§6.4) |
+| **Historical runs reproducible after rate changes** | C-04, DR-2.2 | Version binding at import time, enforced in the domain layer and stored as foreign keys (§6.2) |
+| **Decimal money, never binary floating point** | C-02, BR-01, DR-2.3 | `DECIMAL(13,2)` in MySQL and PHP `BCMath` in the parse/import path — never a PHP float (§6.4) |
 | **Preparer cannot approve** | BR-28, FR-6.2, AC-6.2.1 | `AuthorizationService` is consulted at every entry point, and the rule is *also* a database constraint (§7.2) |
 | **Audit written in the same transaction as the change** | BR-26, BR-27, FR-6.1 | `AuditService` participates in the caller's transaction; `AUDIT_LOG` is append-only (§6.5) |
 | **Encrypted client–server communication** | CM-01 | HTTPS with a locally-issued certificate, no public CA and no internet dependency (§7.1) |
@@ -351,7 +351,7 @@ flowchart TB
     class DBX data;
 ```
 
-**Figure 3.** *Component architecture — green components are the 14 named in behavioral §1.4; amber are the 21 this document adds*
+**Figure 3.** *Component architecture — green components are the 17 named in behavioral §1.4; amber are the 21 this document adds*
 
 ## 5.1 Component responsibilities
 
@@ -430,8 +430,6 @@ Nothing recomputes on read; nothing could. A payslip reprinted three years later
 | Concern | Mechanism |
 |---|---|
 | Two users editing one employee | Optimistic locking on the row version; the second save is refused with a reload prompt, never silently merged |
-| Two users computing one run | The run's state is read inside the transaction that changes it. `Draft → For Review` is a guarded update, so the second submission finds the state already moved and is refused (AC-4.4.1) |
-| A computation and a correction colliding | `is_stale` is set inside the correcting transaction. The engine reads the stale set at the start of its own transaction, so a correction arriving mid-run is picked up by the next recomputation rather than half-applied to this one |
 | Approve and finalize racing | `PAYROLL_RUN.run_status` is checked and updated in one statement under `SERIALIZABLE` isolation for transition operations; every other read uses `REPEATABLE READ` |
 
 ## 6.4 C-02 — decimal arithmetic end to end
@@ -779,7 +777,7 @@ Every selection below is fixed. Where two products would both have served, the a
 | **Views** | Blade + Alpine.js | Alpine 3.x | AD-06. Server-rendered, progressive enhancement |
 | **Asset build** | Vite | bundled | **Build time only.** Compiled CSS and JS are deployed as files; no Node runtime and no CDN on the server (C-03, AD-16) |
 | **Database** | MySQL | 8.4 LTS | AD-03. InnoDB, `utf8mb4`, `DECIMAL(13,2)` for money. MariaDB 11.4 is compatible with every feature used here |
-| **Money arithmetic** | BCMath | bundled with PHP | §6.4. No native float appears in the computation path |
+| **Money arithmetic** | BCMath | bundled with PHP | §6.4. No native float appears in the parse/import path |
 | **PDF** | DomPDF via `barryvdh/laravel-dompdf` | 3.x | Pure PHP with no external binary to install or keep patched on an offline server. Payslips and reports are simple table layouts, which is what DomPDF does well (SW-02) |
 | **Spreadsheet** | PhpSpreadsheet | 2.x | Reads the `.xlsx` and CSV attendance template (SW-01) and writes tabular exports (SW-02) |
 | **Queue** | Laravel queue, `database` driver | bundled | Carries anchor transmission and retries (§6.7). The database driver avoids adding Redis for a workload of roughly 400 jobs a year |

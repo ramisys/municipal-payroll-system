@@ -1,0 +1,5 @@
+# The SHA-256 hashes recorded in docs/baseline.md are computed over
+# LF-terminated files. Pin LF in the working copy so a checkout on any
+# platform still verifies against them.
+* text=auto eol=lf
+*.md text eol=lf

@@ -18,3 +18,6 @@ Desktop.ini
 # Environment
 .env
 .env.backup
+
+# Test tooling
+.phpunit.result.cache

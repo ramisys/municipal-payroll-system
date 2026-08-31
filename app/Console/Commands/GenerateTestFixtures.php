@@ -31,7 +31,66 @@ class GenerateTestFixtures extends Command
         $this->writeCleanRegisterFixture("{$dir}/register_clean.xlsx");
         $this->info('Wrote tests/Fixtures/register_clean.xlsx');
 
+        $this->writeMalformedRegisterFixture("{$dir}/register_malformed_missing_column.xlsx");
+        $this->info('Wrote tests/Fixtures/register_malformed_missing_column.xlsx');
+
         return self::SUCCESS;
+    }
+
+    /**
+     * The E1 structural-refusal fixture for RegisterImportService (week 2):
+     * the clean register with its 'Net Pay' header renamed, so the
+     * CANONICAL IMPORT_COLUMN_MAP cannot resolve that required column.
+     * AD-17's whole premise is that a *renamed* header is the ordinary
+     * failure case a mapping absorbs — this fixture is what happens when
+     * no mapping version has been created for the new name yet.
+     */
+    private function writeMalformedRegisterFixture(string $path): void
+    {
+        $headers = [
+            'Employee No.', 'Basic Pay', 'Overtime Pay', 'Night Shift Differential',
+            'Holiday Pay', 'Representation and Transportation Allowance', '13th Month Pay',
+            'SSS Contribution', 'PhilHealth Contribution', 'Pag-IBIG Contribution',
+            'Withholding Tax', 'Loan Amortization', 'Other Deduction',
+            'SSS ER Share', 'PhilHealth ER Share', 'Pag-IBIG ER Share',
+            'Gross Pay', 'Total Deductions', 'Take-Home Pay', // was 'Net Pay'
+        ];
+
+        $rows = [
+            ['E-0001', '20000.00', '1500.50', '300.25', '0.00', '2000.00', '0.00',
+                '900.00', '500.00', '100.00', '1200.35', '0.00', '0.00',
+                '1800.00', '500.00', '100.00', '23800.75', '2700.35', '21100.40'],
+        ];
+
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Register');
+
+        foreach ($headers as $col => $header) {
+            $sheet->setCellValue([$col + 1, 1], $header);
+        }
+
+        $moneyColumns = range(2, count($headers));
+
+        foreach ($rows as $rowIndex => $row) {
+            $excelRow = $rowIndex + 2;
+            foreach ($row as $col => $value) {
+                $excelCol = $col + 1;
+                if (in_array($excelCol, $moneyColumns, true)) {
+                    $sheet->setCellValueExplicit([$excelCol, $excelRow], (float) $value, DataType::TYPE_NUMERIC);
+                } else {
+                    $sheet->setCellValue([$excelCol, $excelRow], $value);
+                }
+            }
+        }
+
+        $lastRow = count($rows) + 1;
+        foreach ($moneyColumns as $col) {
+            $letter = Coordinate::stringFromColumnIndex($col);
+            $sheet->getStyle("{$letter}2:{$letter}{$lastRow}")->getNumberFormat()->setFormatCode('0.00');
+        }
+
+        (new Xlsx($spreadsheet))->save($path);
     }
 
     /**

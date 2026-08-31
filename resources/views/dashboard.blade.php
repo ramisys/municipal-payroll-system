@@ -15,6 +15,9 @@
 
     <nav>
         <ul>
+            @if ($canManageEmployees)
+                <li><a href="{{ route('employees.index') }}">Employees</a></li>
+            @endif
             @if ($canManageUsers)
                 <li><a href="{{ route('users.index') }}">Manage users</a></li>
             @endif

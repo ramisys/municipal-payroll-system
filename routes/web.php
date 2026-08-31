@@ -3,6 +3,7 @@
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\Auth\PasswordChangeController;
 use App\Http\Controllers\Auth\SessionController;
+use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\ImportColumnMapController;
 use App\Http\Controllers\OrganizationProfileController;
 use App\Http\Controllers\ReferenceDataController;
@@ -30,13 +31,14 @@ Route::middleware(['auth', 'session.idle', 'password.changed'])->group(function 
     Route::get('/password/change', [PasswordChangeController::class, 'edit'])->name('password.change');
     Route::post('/password/change', [PasswordChangeController::class, 'update'])->name('password.update');
 
-    // Placeholder landing view (UC-01 main flow step 6). Per-role module
-    // screens don't exist yet — M2 onward is a later week.
+    // Placeholder landing view (UC-01 main flow step 6). M2 (employees)
+    // is wired up; M3 onward is still a later week.
     Route::get('/dashboard', function (AuthorizationService $authorizationService) {
         $user = Auth::user();
 
         return view('dashboard', [
             'user' => $user,
+            'canManageEmployees' => $authorizationService->can($user, 'employees.manage'),
             'canManageUsers' => $authorizationService->can($user, 'users.manage'),
             'canViewAuditLog' => $authorizationService->can($user, 'audit_log.view'),
             'canManageOrganization' => $authorizationService->can($user, 'organization.manage'),
@@ -84,6 +86,17 @@ Route::middleware(['auth', 'session.idle', 'password.changed'])->group(function 
     Route::put('/reference-data/{type}/{id}', [ReferenceDataController::class, 'update'])->whereNumber('id')->name('reference-data.update');
     Route::post('/reference-data/{type}/{id}/deactivate', [ReferenceDataController::class, 'deactivate'])->whereNumber('id')->name('reference-data.deactivate');
     Route::post('/reference-data/{type}/{id}/reactivate', [ReferenceDataController::class, 'reactivate'])->whereNumber('id')->name('reference-data.reactivate');
+
+    // UC-08, UC-09, UC-10 — Payroll Officer, Administrator ('employees.manage').
+    Route::get('/employees', [EmployeeController::class, 'index'])->name('employees.index');
+    Route::get('/employees/create', [EmployeeController::class, 'create'])->name('employees.create');
+    Route::post('/employees', [EmployeeController::class, 'store'])->name('employees.store');
+    Route::get('/employees/{employee}/edit', [EmployeeController::class, 'edit'])->name('employees.edit');
+    Route::put('/employees/{employee}', [EmployeeController::class, 'update'])->name('employees.update');
+    Route::get('/employees/{employee}/deactivate', [EmployeeController::class, 'deactivateForm'])->name('employees.deactivate-form');
+    Route::post('/employees/{employee}/deactivate', [EmployeeController::class, 'deactivate'])->name('employees.deactivate');
+    Route::get('/employees/{employee}/reactivate', [EmployeeController::class, 'reactivateForm'])->name('employees.reactivate-form');
+    Route::post('/employees/{employee}/reactivate', [EmployeeController::class, 'reactivate'])->name('employees.reactivate');
 
     // UC-04 mapping editor — AD-17, BR-41. Administrator only.
     Route::get('/import-column-maps', [ImportColumnMapController::class, 'index'])->name('import-column-maps.index');

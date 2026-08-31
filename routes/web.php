@@ -3,6 +3,9 @@
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\Auth\PasswordChangeController;
 use App\Http\Controllers\Auth\SessionController;
+use App\Http\Controllers\ImportColumnMapController;
+use App\Http\Controllers\OrganizationProfileController;
+use App\Http\Controllers\ReferenceDataController;
 use App\Http\Controllers\UserController;
 use App\Services\AuthorizationService;
 use Illuminate\Support\Facades\Auth;
@@ -36,6 +39,7 @@ Route::middleware(['auth', 'session.idle', 'password.changed'])->group(function 
             'user' => $user,
             'canManageUsers' => $authorizationService->can($user, 'users.manage'),
             'canViewAuditLog' => $authorizationService->can($user, 'audit_log.view'),
+            'canManageOrganization' => $authorizationService->can($user, 'organization.manage'),
         ]);
     })->name('dashboard');
 
@@ -55,4 +59,36 @@ Route::middleware(['auth', 'session.idle', 'password.changed'])->group(function 
     // UC-06 — Approver, Administrator, Viewer (AuthorizationService
     // enforces; not the Payroll Officer, per the FR-6.2 matrix).
     Route::get('/audit-log', [AuditLogController::class, 'index'])->name('audit-log.index');
+
+    // UC-03 — Administrator only ('organization.manage').
+    Route::get('/organization', [OrganizationProfileController::class, 'edit'])->name('organization.edit');
+    Route::put('/organization', [OrganizationProfileController::class, 'update'])->name('organization.update');
+
+    Route::get('/organization/periods', [OrganizationProfileController::class, 'periodsIndex'])->name('organization.periods.index');
+    Route::post('/organization/periods', [OrganizationProfileController::class, 'periodsStore'])->name('organization.periods.store');
+    Route::get('/organization/periods/{period}/edit', [OrganizationProfileController::class, 'periodsEdit'])->name('organization.periods.edit');
+    Route::put('/organization/periods/{period}', [OrganizationProfileController::class, 'periodsUpdate'])->name('organization.periods.update');
+
+    Route::get('/organization/holidays', [OrganizationProfileController::class, 'holidaysIndex'])->name('organization.holidays.index');
+    Route::get('/organization/holidays/create', [OrganizationProfileController::class, 'holidaysCreate'])->name('organization.holidays.create');
+    Route::post('/organization/holidays', [OrganizationProfileController::class, 'holidaysStore'])->name('organization.holidays.store');
+    Route::get('/organization/holidays/{holiday}/edit', [OrganizationProfileController::class, 'holidaysEdit'])->name('organization.holidays.edit');
+    Route::put('/organization/holidays/{holiday}', [OrganizationProfileController::class, 'holidaysUpdate'])->name('organization.holidays.update');
+
+    // UC-04 — Administrator only ('reference_data.manage'). {type} is one
+    // of the six slugs ReferenceDataController::config() knows.
+    Route::get('/reference-data/{type}', [ReferenceDataController::class, 'index'])->name('reference-data.index');
+    Route::get('/reference-data/{type}/create', [ReferenceDataController::class, 'create'])->name('reference-data.create');
+    Route::post('/reference-data/{type}', [ReferenceDataController::class, 'store'])->name('reference-data.store');
+    Route::get('/reference-data/{type}/{id}/edit', [ReferenceDataController::class, 'edit'])->whereNumber('id')->name('reference-data.edit');
+    Route::put('/reference-data/{type}/{id}', [ReferenceDataController::class, 'update'])->whereNumber('id')->name('reference-data.update');
+    Route::post('/reference-data/{type}/{id}/deactivate', [ReferenceDataController::class, 'deactivate'])->whereNumber('id')->name('reference-data.deactivate');
+    Route::post('/reference-data/{type}/{id}/reactivate', [ReferenceDataController::class, 'reactivate'])->whereNumber('id')->name('reference-data.reactivate');
+
+    // UC-04 mapping editor — AD-17, BR-41. Administrator only.
+    Route::get('/import-column-maps', [ImportColumnMapController::class, 'index'])->name('import-column-maps.index');
+    Route::get('/import-column-maps/create', [ImportColumnMapController::class, 'create'])->name('import-column-maps.create');
+    Route::post('/import-column-maps', [ImportColumnMapController::class, 'store'])->name('import-column-maps.store');
+    Route::post('/import-column-maps/{importColumnMap}/deactivate', [ImportColumnMapController::class, 'deactivate'])->name('import-column-maps.deactivate');
+    Route::post('/import-column-maps/{importColumnMap}/reactivate', [ImportColumnMapController::class, 'reactivate'])->name('import-column-maps.reactivate');
 });

@@ -39,6 +39,17 @@ use Illuminate\Support\Facades\DB;
 //   audit_log.view             FR-6.1         — Approver, Admin, Viewer
 //   integrity.verify           FR-6.3         — Approver, Admin, Viewer
 //   backup.run_restore         NFR-5.4        — Admin
+//
+// Three keys added week 4 (pre-oral-demonstration-plan.md §6, Table 6):
+// FR-0.3 and FR-0.4 are Administrator-exclusive by the requirement's own
+// "Actor" line, not by an FR-6.2 matrix row — the matrix table lists only
+// functions with more than one possible actor, and these have one. They
+// are still checked through AuthorizationService like every other action
+// (AC-6.2.2), not left ungated because the matrix is silent on them.
+//
+//   organization.manage        FR-0.3         — Admin
+//   reference_data.manage      FR-0.4         — Admin
+//   import_column_map.manage   FR-2.8, BR-41  — Admin
 class RoleSeeder extends Seeder
 {
     public function run(): void
@@ -59,6 +70,9 @@ class RoleSeeder extends Seeder
                     'audit_log.view',
                     'integrity.verify',
                     'backup.run_restore',
+                    'organization.manage',
+                    'reference_data.manage',
+                    'import_column_map.manage',
                 ],
             ],
             [

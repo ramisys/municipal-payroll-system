@@ -21,6 +21,11 @@
             @if ($canViewAuditLog)
                 <li><a href="{{ route('audit-log.index') }}">Audit log</a></li>
             @endif
+            @if ($canManageOrganization)
+                <li><a href="{{ route('organization.edit') }}">Organization profile &amp; payroll calendar</a></li>
+                <li><a href="{{ route('reference-data.index', 'departments') }}">Reference data</a></li>
+                <li><a href="{{ route('import-column-maps.index') }}">Register column mapping</a></li>
+            @endif
         </ul>
     </nav>
 

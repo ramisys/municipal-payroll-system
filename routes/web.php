@@ -8,6 +8,8 @@ use App\Http\Controllers\CompensationProfileController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\ImportColumnMapController;
 use App\Http\Controllers\OrganizationProfileController;
+use App\Http\Controllers\PayrollImportController;
+use App\Http\Controllers\PayrollRunController;
 use App\Http\Controllers\ReferenceDataController;
 use App\Http\Controllers\UserController;
 use App\Services\AuthorizationService;
@@ -45,6 +47,7 @@ Route::middleware(['auth', 'session.idle', 'password.changed'])->group(function 
             'canViewAuditLog' => $authorizationService->can($user, 'audit_log.view'),
             'canManageOrganization' => $authorizationService->can($user, 'organization.manage'),
             'canImportAttendance' => $authorizationService->can($user, 'attendance.import'),
+            'canManagePayrollRuns' => $authorizationService->can($user, 'payroll_run.create_import'),
         ]);
     })->name('dashboard');
 
@@ -121,4 +124,24 @@ Route::middleware(['auth', 'session.idle', 'password.changed'])->group(function 
     Route::post('/import-column-maps', [ImportColumnMapController::class, 'store'])->name('import-column-maps.store');
     Route::post('/import-column-maps/{importColumnMap}/deactivate', [ImportColumnMapController::class, 'deactivate'])->name('import-column-maps.deactivate');
     Route::post('/import-column-maps/{importColumnMap}/reactivate', [ImportColumnMapController::class, 'reactivate'])->name('import-column-maps.reactivate');
+
+    // UC-17, UC-32 — Payroll Officer only ('payroll_run.create_import').
+    Route::get('/payroll-runs', [PayrollRunController::class, 'index'])->name('payroll-runs.index');
+    Route::get('/payroll-runs/create', [PayrollRunController::class, 'create'])->name('payroll-runs.create');
+    Route::post('/payroll-runs', [PayrollRunController::class, 'store'])->name('payroll-runs.store');
+    Route::get('/payroll-runs/{payrollRun}', [PayrollRunController::class, 'show'])->name('payroll-runs.show');
+    Route::get('/payroll-runs/{payrollRun}/cancel', [PayrollRunController::class, 'cancelForm'])->name('payroll-runs.cancel-form');
+    Route::post('/payroll-runs/{payrollRun}/cancel', [PayrollRunController::class, 'cancel'])->name('payroll-runs.cancel');
+    Route::get('/payroll-runs/{payrollRun}/worksheet', [PayrollRunController::class, 'exportWorksheet'])->name('payroll-runs.worksheet');
+
+    // UC-18 — Payroll Officer only ('payroll_run.create_import').
+    Route::get('/payroll-runs/{payrollRun}/import', [PayrollImportController::class, 'create'])->name('payroll-imports.create');
+    Route::post('/payroll-runs/{payrollRun}/import/preview', [PayrollImportController::class, 'preview'])->name('payroll-imports.preview');
+    Route::post('/payroll-runs/{payrollRun}/import/commit', [PayrollImportController::class, 'commit'])->name('payroll-imports.commit');
+    Route::post('/payroll-runs/{payrollRun}/import/cancel', [PayrollImportController::class, 'cancel'])->name('payroll-imports.cancel');
+
+    // UC-33 — Payroll Officer, Approver, Administrator, Viewer ('payroll_records.search').
+    Route::get('/payroll-runs/{payrollRun}/imports', [PayrollImportController::class, 'history'])->name('payroll-imports.history');
+    Route::get('/payroll-runs/{payrollRun}/imports/{payrollImport}', [PayrollImportController::class, 'show'])->name('payroll-imports.show');
+    Route::get('/payroll-runs/{payrollRun}/imports/{payrollImport}/download', [PayrollImportController::class, 'download'])->name('payroll-imports.download');
 });

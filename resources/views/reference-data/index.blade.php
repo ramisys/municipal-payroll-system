@@ -1,57 +1,67 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>{{ $config['label'] }}s — {{ config('app.name') }}</title>
-</head>
-<body>
-    <p><a href="{{ route('dashboard') }}">&larr; Dashboard</a> | <a href="{{ route('organization.edit') }}">Organization &amp; calendar</a></p>
+@extends('layouts.app')
 
-    <h1>Reference data — {{ $config['label'] }}s</h1>
+@section('title', 'Reference data — ' . $config['label'] . 's')
+@section('heading', 'Reference data — ' . $config['label'] . 's')
 
-    <nav>
-        <ul>
-            @foreach (['departments' => 'Departments', 'positions' => 'Positions', 'employment-statuses' => 'Employment statuses', 'earning-types' => 'Earning types', 'deduction-types' => 'Deduction types', 'leave-types' => 'Leave types'] as $slug => $label)
+@section('content')
+    @php
+        $tabs = [
+            'departments' => 'Departments',
+            'positions' => 'Positions',
+            'employment-statuses' => 'Employment statuses',
+            'earning-types' => 'Earning types',
+            'deduction-types' => 'Deduction types',
+            'leave-types' => 'Leave types',
+        ];
+    @endphp
+
+    <x-page-header title="Reference data"
+                   subtitle="The lookup lists the rest of the system draws from. Entries are deactivated, never deleted.">
+        <x-slot:actions>
+            <a href="{{ route('reference-data.create', $type) }}" class="btn btn-primary">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                    <path d="M12 5v14M5 12h14"/>
+                </svg>
+                New {{ strtolower($config['label']) }}
+            </a>
+        </x-slot:actions>
+    </x-page-header>
+
+    {{-- Six sibling lists — tabs keep them one click apart instead of a
+         round trip through the dashboard. --}}
+    <nav aria-label="Reference data type" class="border-b border-line">
+        <ul class="flex flex-wrap -mb-px">
+            @foreach ($tabs as $slug => $label)
                 <li>
-                    @if ($slug === $type)
-                        <strong>{{ $label }}</strong>
-                    @else
-                        <a href="{{ route('reference-data.index', $slug) }}">{{ $label }}</a>
-                    @endif
+                    <a href="{{ route('reference-data.index', $slug) }}"
+                       @if ($slug === $type) aria-current="page" @endif
+                       class="inline-block px-3 py-2 text-sm font-medium border-b-2 transition-colors duration-200
+                              @if ($slug === $type)
+                                  border-brand-700 text-brand-700
+                              @else
+                                  border-transparent text-ink-muted hover:text-ink hover:border-line-strong
+                              @endif">
+                        {{ $label }}
+                    </a>
                 </li>
             @endforeach
         </ul>
     </nav>
 
-    @if (session('status'))
-        <p role="status">{{ session('status') }}</p>
-    @endif
-
-    @if ($errors->any())
-        <ul role="alert">
-            @foreach ($errors->all() as $error)
-                <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-    @endif
-
-    <p><a href="{{ route('reference-data.create', $type) }}">New {{ strtolower($config['label']) }}</a></p>
-
-    <table border="1" cellpadding="4">
-        <thead>
-            <tr>
+    <x-card :flush="true">
+        <x-table>
+            <x-slot:head>
                 @foreach ($config['columns'] as $column)
                     <th>{{ $column['label'] }}</th>
                 @endforeach
                 <th>Status</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
+                <th class="actions">Actions</th>
+            </x-slot:head>
+
             @forelse ($items as $item)
                 <tr>
                     @foreach ($config['columns'] as $column)
-                        <td>
+                        <td @class(['font-medium' => $loop->first])>
                             @if (str_starts_with($column['type'], 'boolean'))
                                 {{ $item->{$column['field']} ? 'Yes' : 'No' }}
                             @else
@@ -59,27 +69,38 @@
                             @endif
                         </td>
                     @endforeach
-                    <td>{{ $item->is_active ? 'Active' : 'Deactivated' }}</td>
-                    <td>
-                        <a href="{{ route('reference-data.edit', [$type, $item->getKey()]) }}">Edit</a>
 
-                        @if ($item->is_active)
-                            <form method="POST" action="{{ route('reference-data.deactivate', [$type, $item->getKey()]) }}" style="display:inline">
-                                @csrf
-                                <button type="submit">Deactivate</button>
-                            </form>
-                        @else
-                            <form method="POST" action="{{ route('reference-data.reactivate', [$type, $item->getKey()]) }}" style="display:inline">
-                                @csrf
-                                <button type="submit">Reactivate</button>
-                            </form>
-                        @endif
+                    <td><x-status-badge :value="$item->is_active ? 'ACTIVE' : 'DEACTIVATED'" /></td>
+
+                    <td class="actions">
+                        <div class="flex items-center gap-1">
+                            <a href="{{ route('reference-data.edit', [$type, $item->getKey()]) }}"
+                               class="btn btn-ghost btn-sm">Edit</a>
+
+                            @if ($item->is_active)
+                                <form method="POST" action="{{ route('reference-data.deactivate', [$type, $item->getKey()]) }}">
+                                    @csrf
+                                    <button type="submit" class="btn btn-ghost btn-sm text-bad-fg hover:bg-bad-bg">Deactivate</button>
+                                </form>
+                            @else
+                                <form method="POST" action="{{ route('reference-data.reactivate', [$type, $item->getKey()]) }}">
+                                    @csrf
+                                    <button type="submit" class="btn btn-ghost btn-sm text-ok-fg hover:bg-ok-bg">Reactivate</button>
+                                </form>
+                            @endif
+                        </div>
                     </td>
                 </tr>
             @empty
-                <tr><td colspan="{{ count($config['columns']) + 2 }}">No entries yet.</td></tr>
+                <x-empty-state :colspan="count($config['columns']) + 2"
+                               message="No {{ strtolower($config['label']) }} entries yet.">
+                    <x-slot:action>
+                        <a href="{{ route('reference-data.create', $type) }}" class="link">
+                            Add the first {{ strtolower($config['label']) }}
+                        </a>
+                    </x-slot:action>
+                </x-empty-state>
             @endforelse
-        </tbody>
-    </table>
-</body>
-</html>
+        </x-table>
+    </x-card>
+@endsection

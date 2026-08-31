@@ -1,44 +1,40 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>Import attendance — {{ config('app.name') }}</title>
-</head>
-<body>
-    <p><a href="{{ route('dashboard') }}">&larr; Dashboard</a></p>
+@extends('layouts.app')
 
-    <h1>Import attendance</h1>
+@section('title', 'Import attendance')
+@section('heading', 'Import attendance')
 
-    @if (session('status'))
-        <p role="status">{{ session('status') }}</p>
-    @endif
+@section('content')
+    <x-page-header title="Import attendance"
+                   subtitle="Load a cut-off period's attendance file for review before anything is written." />
 
-    @if ($errors->any())
-        <ul role="alert">
-            @foreach ($errors->all() as $error)
-                <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-    @endif
+    <div class="max-w-2xl space-y-4">
+        <x-note>
+            UC-13, FR-1.3 — nothing is written until the preview is confirmed (AC-1.3.1).
+            Expected columns: <strong>Employee No</strong>, <strong>Date</strong>,
+            <strong>Time In</strong>, <strong>Time Out</strong>.
+        </x-note>
 
-    <p><small>UC-13, FR-1.3 — nothing is written until the preview below is confirmed (AC-1.3.1). Expected columns: 'Employee No', 'Date', 'Time In', 'Time Out'.</small></p>
+        <x-card>
+            <form method="POST" action="{{ route('attendance-import.preview') }}"
+                  enctype="multipart/form-data" class="space-y-4">
+                @csrf
 
-    <form method="POST" action="{{ route('attendance-import.preview') }}" enctype="multipart/form-data">
-        @csrf
+                <x-field label="Cut-off period" name="payroll_period_id" required>
+                    <select id="payroll_period_id" name="payroll_period_id" class="select" required>
+                        @foreach ($periods as $period)
+                            <option value="{{ $period->payroll_period_id }}">
+                                {{ $period->payroll_year }} P{{ $period->period_no }} ({{ $period->cutoff_start->toDateString() }} to {{ $period->cutoff_end->toDateString() }})
+                            </option>
+                        @endforeach
+                    </select>
+                </x-field>
 
-        <p><label for="payroll_period_id">Cut-off period</label><br>
-        <select id="payroll_period_id" name="payroll_period_id" required>
-            @foreach ($periods as $period)
-                <option value="{{ $period->payroll_period_id }}">
-                    {{ $period->payroll_year }} P{{ $period->period_no }} ({{ $period->cutoff_start->toDateString() }} to {{ $period->cutoff_end->toDateString() }})
-                </option>
-            @endforeach
-        </select></p>
+                <x-field label="Attendance file" name="file" required hint="Accepts .xlsx or .csv.">
+                    <input type="file" id="file" name="file" class="input-file" required accept=".xlsx,.csv">
+                </x-field>
 
-        <p><label for="file">Attendance file (.xlsx or .csv)</label><br>
-        <input type="file" id="file" name="file" required></p>
-
-        <button type="submit">Preview</button>
-    </form>
-</body>
-</html>
+                <button type="submit" class="btn btn-primary">Preview import</button>
+            </form>
+        </x-card>
+    </div>
+@endsection

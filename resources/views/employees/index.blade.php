@@ -1,75 +1,102 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>Employees — {{ config('app.name') }}</title>
-</head>
-<body>
-    <p><a href="{{ route('dashboard') }}">&larr; Dashboard</a></p>
+@extends('layouts.app')
 
-    <h1>Employees</h1>
+@section('title', 'Employees')
+@section('heading', 'Employees')
 
-    @if (session('status'))
-        <p role="status">{{ session('status') }}</p>
-    @endif
+@section('content')
+    <x-page-header title="Employees" subtitle="The employee master file. Records are deactivated, never deleted.">
+        <x-slot:actions>
+            <a href="{{ route('employees.create') }}" class="btn btn-primary">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                    <path d="M12 5v14M5 12h14"/>
+                </svg>
+                Register new employee
+            </a>
+        </x-slot:actions>
+    </x-page-header>
 
-    <p><a href="{{ route('employees.create') }}">Register new employee</a></p>
+    <x-card>
+        <form method="GET" action="{{ route('employees.index') }}"
+              class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
 
-    <form method="GET" action="{{ route('employees.index') }}">
-        <label for="q">Search (name or employee no.)</label>
-        <input type="text" id="q" name="q" value="{{ $filters['q'] ?? '' }}">
+            <x-field label="Search" name="q" hint="Name or employee no.">
+                <input type="text" id="q" name="q" value="{{ $filters['q'] ?? '' }}" class="input"
+                       placeholder="e.g. Dela Cruz or 2024-001">
+            </x-field>
 
-        <label for="department_id">Department</label>
-        <select id="department_id" name="department_id">
-            <option value="">All</option>
-            @foreach ($departments as $department)
-                <option value="{{ $department->department_id }}" @selected(($filters['department_id'] ?? null) == $department->department_id)>{{ $department->department_name }}</option>
-            @endforeach
-        </select>
+            <x-field label="Department" name="department_id">
+                <select id="department_id" name="department_id" class="select">
+                    <option value="">All departments</option>
+                    @foreach ($departments as $department)
+                        <option value="{{ $department->department_id }}" @selected(($filters['department_id'] ?? null) == $department->department_id)>{{ $department->department_name }}</option>
+                    @endforeach
+                </select>
+            </x-field>
 
-        <label for="status">Status</label>
-        <select id="status" name="status">
-            <option value="">All</option>
-            <option value="active" @selected(($filters['status'] ?? null) === 'active')>Active</option>
-            <option value="inactive" @selected(($filters['status'] ?? null) === 'inactive')>Deactivated</option>
-        </select>
+            <x-field label="Status" name="status">
+                <select id="status" name="status" class="select">
+                    <option value="">All statuses</option>
+                    <option value="active" @selected(($filters['status'] ?? null) === 'active')>Active</option>
+                    <option value="inactive" @selected(($filters['status'] ?? null) === 'inactive')>Deactivated</option>
+                </select>
+            </x-field>
 
-        <button type="submit">Filter</button>
-    </form>
+            <div class="flex items-center gap-2">
+                <button type="submit" class="btn btn-secondary">Filter</button>
+                @if (array_filter($filters ?? []))
+                    <a href="{{ route('employees.index') }}" class="btn btn-ghost">Clear</a>
+                @endif
+            </div>
+        </form>
+    </x-card>
 
-    <table border="1" cellpadding="4">
-        <thead>
-            <tr>
+    <x-card :flush="true">
+        <x-table>
+            <x-slot:head>
                 <th>Employee no.</th>
                 <th>Name</th>
                 <th>Department</th>
                 <th>Position</th>
                 <th>Employment status</th>
-                <th>Status</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach ($employees as $employee)
+                <th>Record</th>
+                <th class="actions">Actions</th>
+            </x-slot:head>
+
+            @forelse ($employees as $employee)
                 <tr>
-                    <td>{{ $employee->employee_no }}</td>
-                    <td>{{ $employee->fullName() }}</td>
+                    <td class="font-medium tabular">{{ $employee->employee_no }}</td>
+                    <td class="font-medium">{{ $employee->fullName() }}</td>
                     <td>{{ $employee->currentEmploymentDetail?->department?->department_name ?? '—' }}</td>
                     <td>{{ $employee->currentEmploymentDetail?->position?->position_title ?? '—' }}</td>
                     <td>{{ $employee->currentEmploymentDetail?->employmentStatus?->status_name ?? '—' }}</td>
-                    <td>{{ $employee->is_active ? 'Active' : 'Deactivated' }}</td>
-                    <td>
-                        <a href="{{ route('employees.edit', $employee) }}">Edit</a>
-                        <a href="{{ route('employees.compensation.index', $employee) }}">Compensation</a>
-                        @if ($employee->is_active)
-                            <a href="{{ route('employees.deactivate-form', $employee) }}">Deactivate</a>
-                        @else
-                            <a href="{{ route('employees.reactivate-form', $employee) }}">Reactivate</a>
-                        @endif
+                    <td><x-status-badge :value="$employee->is_active ? 'ACTIVE' : 'DEACTIVATED'" /></td>
+                    <td class="actions">
+                        <div class="flex items-center gap-1">
+                            <a href="{{ route('employees.edit', $employee) }}" class="btn btn-ghost btn-sm">Edit</a>
+                            <a href="{{ route('employees.compensation.index', $employee) }}" class="btn btn-ghost btn-sm">Compensation</a>
+                            @if ($employee->is_active)
+                                <a href="{{ route('employees.deactivate-form', $employee) }}" class="btn btn-ghost btn-sm text-bad-fg hover:bg-bad-bg">Deactivate</a>
+                            @else
+                                <a href="{{ route('employees.reactivate-form', $employee) }}" class="btn btn-ghost btn-sm text-ok-fg hover:bg-ok-bg">Reactivate</a>
+                            @endif
+                        </div>
                     </td>
                 </tr>
-            @endforeach
-        </tbody>
-    </table>
-</body>
-</html>
+            @empty
+                @if (array_filter($filters ?? []))
+                    <x-empty-state :colspan="7" message="No employees match this filter.">
+                        <x-slot:action>
+                            <a href="{{ route('employees.index') }}" class="link">Clear the filter</a>
+                        </x-slot:action>
+                    </x-empty-state>
+                @else
+                    <x-empty-state :colspan="7" message="No employees on file yet.">
+                        <x-slot:action>
+                            <a href="{{ route('employees.create') }}" class="link">Register the first employee</a>
+                        </x-slot:action>
+                    </x-empty-state>
+                @endif
+            @endforelse
+        </x-table>
+    </x-card>
+@endsection

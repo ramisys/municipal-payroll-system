@@ -1,42 +1,43 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>New user — {{ config('app.name') }}</title>
-</head>
-<body>
-    <p><a href="{{ route('users.index') }}">&larr; Users</a></p>
+@extends('layouts.app')
 
-    <h1>New account</h1>
+@section('title', 'New user')
+@section('heading', 'New account')
 
-    @if ($errors->any())
-        <ul role="alert">
-            @foreach ($errors->all() as $error)
-                <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-    @endif
+@section('content')
+    <x-page-header title="New account" :back="route('users.index')" back-label="User accounts" />
 
-    <form method="POST" action="{{ route('users.store') }}">
-        @csrf
+    <div class="max-w-2xl">
+        <x-card>
+            <form method="POST" action="{{ route('users.store') }}" class="space-y-4">
+                @csrf
 
-        <label for="username">Username</label>
-        <input type="text" id="username" name="username" value="{{ old('username') }}" required autofocus>
+                <x-field label="Username" name="username" required>
+                    <input type="text" id="username" name="username" class="input"
+                           value="{{ old('username') }}" required autofocus
+                           autocapitalize="none" spellcheck="false">
+                </x-field>
 
-        <label for="role_id">Role</label>
-        <select id="role_id" name="role_id" required>
-            <option value="">Select a role</option>
-            @foreach ($roles as $role)
-                <option value="{{ $role->role_id }}" @selected(old('role_id') == $role->role_id)>{{ $role->role_name }}</option>
-            @endforeach
-        </select>
+                <x-field label="Role" name="role_id" required
+                         hint="The role decides which modules this account can reach.">
+                    <select id="role_id" name="role_id" class="select" required>
+                        <option value="">Select a role</option>
+                        @foreach ($roles as $role)
+                            <option value="{{ $role->role_id }}" @selected(old('role_id') == $role->role_id)>{{ $role->role_name }}</option>
+                        @endforeach
+                    </select>
+                </x-field>
 
-        <label for="password">Initial password</label>
-        <input type="password" id="password" name="password" required minlength="8">
+                <x-field label="Initial password" name="password" required
+                         hint="At least 8 characters. The account must change this at first sign-in (AC-0.2.4).">
+                    <input type="password" id="password" name="password" class="input"
+                           required minlength="8" autocomplete="new-password">
+                </x-field>
 
-        <p><em>The account must change this password at first sign-in (AC-0.2.4).</em></p>
-
-        <button type="submit">Create account</button>
-    </form>
-</body>
-</html>
+                <div class="flex items-center gap-2 pt-1">
+                    <button type="submit" class="btn btn-primary">Create account</button>
+                    <a href="{{ route('users.index') }}" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </x-card>
+    </div>
+@endsection

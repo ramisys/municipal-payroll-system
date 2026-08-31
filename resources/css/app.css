@@ -1,3 +1,228 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ---------------------------------------------------------------------------
+   Municipal Payroll System — UI foundation.
+
+   Design direction: Swiss/minimal, light, dense. It is an internal government
+   record-keeping tool read all day under office lighting, so the surface stays
+   flat and quiet and the ink does the work. No webfont, no CDN, no remote
+   asset of any kind is referenced here — AD-16 requires the built artifact to
+   render correctly on a machine with its network cable pulled.
+   --------------------------------------------------------------------------- */
+
+@layer base {
+    html {
+        -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+        @apply bg-canvas text-ink font-sans text-[15px] leading-normal antialiased;
+    }
+
+    /* Money and identifiers must line up column-to-column when scanned. */
+    table, .tabular {
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* Never remove the focus ring — keyboard is the primary input for clerks
+       doing repetitive data entry. */
+    :focus-visible {
+        @apply outline-none ring-2 ring-brand-700 ring-offset-2 ring-offset-white rounded-sm;
+    }
+
+    h1 { @apply text-xl font-semibold tracking-tight text-ink; }
+    h2 { @apply text-base font-semibold text-ink; }
+    h3 { @apply text-sm font-semibold text-ink; }
+}
+
+@layer components {
+
+    /* --- Surfaces ------------------------------------------------------- */
+    .card {
+        @apply bg-surface border border-line rounded-card shadow-card;
+    }
+    .card-head {
+        @apply flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-line;
+    }
+    .card-title {
+        @apply text-sm font-semibold text-ink;
+    }
+    .card-body {
+        @apply p-4;
+    }
+
+    /* --- Buttons -------------------------------------------------------- */
+    /* min-h-[38px] keeps the hit target comfortable without the airiness of a
+       44px consumer-app control; the mobile nav toggle below uses a full 44px. */
+    .btn {
+        @apply inline-flex items-center justify-center gap-2 min-h-[38px] px-3.5 py-2
+               text-sm font-medium rounded-md border cursor-pointer whitespace-nowrap
+               transition-colors duration-200
+               disabled:opacity-50 disabled:cursor-not-allowed;
+    }
+    .btn-primary {
+        @apply bg-brand-700 border-brand-700 text-white hover:bg-brand-800 hover:border-brand-800;
+    }
+    .btn-secondary {
+        @apply bg-white border-line-strong text-ink hover:bg-slate-50 hover:border-slate-400;
+    }
+    .btn-ghost {
+        @apply bg-transparent border-transparent text-ink-muted hover:bg-slate-100 hover:text-ink;
+    }
+    .btn-danger {
+        @apply bg-white border-bad-br text-bad-fg hover:bg-bad-bg;
+    }
+    .btn-danger-solid {
+        @apply bg-bad-fg border-bad-fg text-white hover:bg-red-800 hover:border-red-800;
+    }
+    .btn-sm {
+        @apply min-h-[32px] px-2.5 py-1 text-[13px];
+    }
+
+    /* --- Forms ---------------------------------------------------------- */
+    .label {
+        @apply block text-[13px] font-medium text-ink mb-1;
+    }
+    .hint {
+        @apply block text-[13px] text-ink-muted mt-1;
+    }
+    .input,
+    .select,
+    .textarea {
+        @apply block w-full min-h-[38px] px-3 py-2 text-sm text-ink bg-white
+               border border-line-strong rounded-md
+               transition-colors duration-200
+               placeholder:text-ink-faint
+               focus:border-brand-700 focus:ring-2 focus:ring-brand-200 focus:outline-none
+               disabled:bg-slate-50 disabled:text-ink-muted;
+    }
+    .select {
+        @apply pr-8 appearance-none bg-no-repeat;
+        /* Inline data-URI chevron — an external icon file would break AD-16. */
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='%23475569'%3E%3Cpath fill-rule='evenodd' d='M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.17l3.71-3.94a.75.75 0 1 1 1.08 1.04l-4.25 4.5a.75.75 0 0 1-1.08 0l-4.25-4.5a.75.75 0 0 1 .02-1.06Z' clip-rule='evenodd'/%3E%3C/svg%3E");
+        background-position: right 0.5rem center;
+        background-size: 1.25rem 1.25rem;
+    }
+    .input-file {
+        @apply block w-full text-sm text-ink-muted
+               file:mr-3 file:min-h-[38px] file:px-3.5 file:py-2 file:cursor-pointer
+               file:text-sm file:font-medium file:rounded-md
+               file:border file:border-line-strong file:bg-white file:text-ink
+               hover:file:bg-slate-50;
+    }
+    .checkbox {
+        @apply w-4 h-4 rounded border-line-strong text-brand-700
+               focus:ring-2 focus:ring-brand-200 cursor-pointer;
+    }
+    .field-error {
+        @apply block text-[13px] font-medium text-bad-fg mt-1;
+    }
+    /* Dense two-column form grid; collapses to one column under 640px. */
+    .form-grid {
+        @apply grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-3;
+    }
+
+    /* --- Tables --------------------------------------------------------- */
+    /* Wrapper owns the horizontal scroll so the page body never scrolls
+       sideways on a narrow screen. */
+    .table-wrap {
+        @apply w-full overflow-x-auto;
+    }
+    .table {
+        @apply w-full text-sm border-collapse;
+    }
+    .table thead th {
+        @apply bg-slate-50 text-left text-[12px] font-semibold uppercase
+               tracking-wide text-ink-muted px-3 py-2 border-b border-line whitespace-nowrap;
+    }
+    .table tbody td {
+        @apply px-3 py-2 border-b border-line align-middle;
+    }
+    .table tbody tr:last-child td {
+        @apply border-b-0;
+    }
+    .table tbody tr {
+        @apply transition-colors duration-150 hover:bg-brand-50;
+    }
+    .table .num {
+        @apply text-right whitespace-nowrap;
+    }
+    .table .actions {
+        @apply whitespace-nowrap;
+    }
+    .empty-row {
+        @apply px-3 py-8 text-center text-sm text-ink-muted;
+    }
+
+    /* --- Badges --------------------------------------------------------- */
+    /* Shape and text carry the meaning; colour is reinforcement only, so the
+       states stay distinguishable without colour vision. */
+    .badge {
+        @apply inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full
+               text-[12px] font-medium border whitespace-nowrap;
+    }
+    .badge-ok      { @apply bg-ok-bg   text-ok-fg   border-ok-br; }
+    .badge-warn    { @apply bg-warn-bg text-warn-fg border-warn-br; }
+    .badge-bad     { @apply bg-bad-bg  text-bad-fg  border-bad-br; }
+    .badge-info    { @apply bg-info-bg text-info-fg border-info-br; }
+    .badge-neutral { @apply bg-slate-100 text-ink-muted border-line-strong; }
+    .badge-dot {
+        @apply w-1.5 h-1.5 rounded-full bg-current shrink-0;
+    }
+
+    /* --- Alerts --------------------------------------------------------- */
+    .alert {
+        @apply flex items-start gap-3 px-4 py-3 rounded-md border text-sm;
+    }
+    .alert-ok   { @apply bg-ok-bg   border-ok-br   text-ok-fg; }
+    .alert-warn { @apply bg-warn-bg border-warn-br text-warn-fg; }
+    .alert-bad  { @apply bg-bad-bg  border-bad-br  text-bad-fg; }
+    .alert-info { @apply bg-info-bg border-info-br text-info-fg; }
+    .alert-title { @apply font-semibold; }
+    .alert a { @apply underline underline-offset-2 font-medium; }
+
+    /* --- Navigation ----------------------------------------------------- */
+    .nav-link {
+        @apply flex items-center gap-2.5 px-3 py-2 rounded-md text-sm font-medium
+               text-slate-300 transition-colors duration-200
+               hover:bg-white/10 hover:text-white;
+    }
+    .nav-link-active {
+        @apply bg-white/15 text-white;
+    }
+    .nav-section {
+        @apply px-3 pt-4 pb-1 text-[11px] font-semibold uppercase tracking-wider text-slate-400;
+    }
+    .nav-icon {
+        @apply w-4 h-4 shrink-0;
+    }
+
+    /* --- Misc ----------------------------------------------------------- */
+    .link {
+        @apply text-brand-700 underline underline-offset-2 hover:text-brand-800 transition-colors duration-200;
+    }
+    .kv-label {
+        @apply text-[13px] text-ink-muted;
+    }
+    .kv-value {
+        @apply text-sm font-medium text-ink;
+    }
+    .note {
+        @apply text-[13px] text-ink-muted;
+    }
+    .code-cell {
+        @apply font-mono text-[12px] text-ink-muted break-all;
+    }
+}
+
+/* Respect the OS setting — nothing here is load-bearing motion. */
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}

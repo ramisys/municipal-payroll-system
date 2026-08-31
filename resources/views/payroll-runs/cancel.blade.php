@@ -1,31 +1,34 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>Cancel run #{{ $run->payroll_run_id }} — {{ config('app.name') }}</title>
-</head>
-<body>
-    <p><a href="{{ route('payroll-runs.show', $run) }}">&larr; Run #{{ $run->payroll_run_id }}</a></p>
+@extends('layouts.app')
 
-    <h1>Cancel run #{{ $run->payroll_run_id }}</h1>
+@section('title', 'Cancel run #' . $run->payroll_run_id)
+@section('heading', 'Cancel run #' . $run->payroll_run_id)
 
-    <p><small>UC-17 A2, NFR-6.3 — this is irreversible. The run and its history remain readable but cannot be reopened, imported into, or submitted.</small></p>
+@section('content')
+    <x-page-header
+        title="Cancel run #{{ $run->payroll_run_id }}"
+        :back="route('payroll-runs.show', $run)" back-label="Run #{{ $run->payroll_run_id }}" />
 
-    @if ($errors->any())
-        <ul role="alert">
-            @foreach ($errors->all() as $error)
-                <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-    @endif
+    <div class="max-w-2xl space-y-4">
+        <x-alert type="bad" title="This is irreversible.">
+            UC-17 A2, NFR-6.3 — the run and its history remain readable but cannot be reopened,
+            imported into, or submitted.
+        </x-alert>
 
-    <form method="POST" action="{{ route('payroll-runs.cancel', $run) }}">
-        @csrf
+        <x-card>
+            <form method="POST" action="{{ route('payroll-runs.cancel', $run) }}" class="space-y-4">
+                @csrf
 
-        <label for="reason">Reason</label>
-        <input type="text" id="reason" name="reason" required maxlength="255" value="{{ old('reason') }}">
+                <x-field label="Reason" name="reason" required
+                         hint="Recorded against the run and written to the audit log.">
+                    <input type="text" id="reason" name="reason" class="input"
+                           value="{{ old('reason') }}" required maxlength="255" autofocus>
+                </x-field>
 
-        <button type="submit">Confirm cancellation</button>
-    </form>
-</body>
-</html>
+                <div class="flex items-center gap-2 pt-1">
+                    <button type="submit" class="btn btn-danger-solid">Confirm cancellation</button>
+                    <a href="{{ route('payroll-runs.show', $run) }}" class="btn btn-secondary">Keep this run</a>
+                </div>
+            </form>
+        </x-card>
+    </div>
+@endsection

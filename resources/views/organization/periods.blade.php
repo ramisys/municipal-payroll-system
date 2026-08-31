@@ -1,77 +1,70 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>Pay periods — {{ config('app.name') }}</title>
-</head>
-<body>
-    <p><a href="{{ route('organization.edit') }}">&larr; Organization profile</a></p>
+@extends('layouts.app')
 
-    <h1>Pay periods</h1>
+@section('title', 'Pay periods')
+@section('heading', 'Pay periods')
 
-    @if (session('status'))
-        <p role="status">{{ session('status') }}</p>
-    @endif
+@section('content')
+    <x-page-header title="Pay periods" subtitle="The payroll calendar every run is created against." />
 
-    @if ($errors->any())
-        <ul role="alert">
-            @foreach ($errors->all() as $error)
-                <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-    @endif
+    <x-org-tabs current="periods" />
 
-    <h2>Generate a payroll year</h2>
-    <p><small>BR-34 — the generated year is validated to have no overlap and no gap before it is saved.</small></p>
+    <x-card title="Generate a payroll year">
+        <x-note class="mb-4">
+            BR-34 — the generated year is validated to have no overlap and no gap before it is saved.
+        </x-note>
 
-    <form method="POST" action="{{ route('organization.periods.store') }}">
-        @csrf
-        <p>
-            <label for="payroll_year">Payroll year</label><br>
-            <input type="number" id="payroll_year" name="payroll_year" value="{{ old('payroll_year') }}" required min="2000" max="2100">
-        </p>
-        <p>
-            <label for="pay_frequency">Pay frequency</label><br>
-            <select id="pay_frequency" name="pay_frequency" required>
-                <option value="MONTHLY" @selected(old('pay_frequency') === 'MONTHLY')>Monthly</option>
-                <option value="SEMI_MONTHLY" @selected(old('pay_frequency') === 'SEMI_MONTHLY')>Semi-monthly</option>
-            </select>
-        </p>
-        <p>
-            <label for="pay_date_offset_days">Pay date — days after cut-off end</label><br>
-            <input type="number" id="pay_date_offset_days" name="pay_date_offset_days" value="{{ old('pay_date_offset_days', 5) }}" required min="0" max="30">
-        </p>
-        <button type="submit">Generate</button>
-    </form>
+        <form method="POST" action="{{ route('organization.periods.store') }}"
+              class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+            @csrf
 
-    <h2>Existing years</h2>
+            <x-field label="Payroll year" name="payroll_year" required>
+                <input type="number" id="payroll_year" name="payroll_year" class="input tabular"
+                       value="{{ old('payroll_year') }}" required min="2000" max="2100">
+            </x-field>
+
+            <x-field label="Pay frequency" name="pay_frequency" required>
+                <select id="pay_frequency" name="pay_frequency" class="select" required>
+                    <option value="MONTHLY" @selected(old('pay_frequency') === 'MONTHLY')>Monthly</option>
+                    <option value="SEMI_MONTHLY" @selected(old('pay_frequency') === 'SEMI_MONTHLY')>Semi-monthly</option>
+                </select>
+            </x-field>
+
+            <x-field label="Pay date offset" name="pay_date_offset_days" required hint="Days after cut-off end.">
+                <input type="number" id="pay_date_offset_days" name="pay_date_offset_days" class="input tabular"
+                       value="{{ old('pay_date_offset_days', 5) }}" required min="0" max="30">
+            </x-field>
+
+            <button type="submit" class="btn btn-primary">Generate year</button>
+        </form>
+    </x-card>
 
     @forelse ($periodsByYear as $year => $periods)
-        <h3>{{ $year }} ({{ $periods->first()->pay_frequency }})</h3>
-        <table border="1" cellpadding="4">
-            <thead>
-                <tr>
-                    <th>Period #</th>
+        <x-card title="{{ $year }}" subtitle="{{ $periods->first()->pay_frequency }}" :flush="true">
+            <x-table>
+                <x-slot:head>
+                    <th class="num">Period #</th>
                     <th>Cut-off start</th>
                     <th>Cut-off end</th>
                     <th>Pay date</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
+                    <th class="actions"><span class="sr-only">Actions</span></th>
+                </x-slot:head>
+
                 @foreach ($periods as $period)
                     <tr>
-                        <td>{{ $period->period_no }}</td>
-                        <td>{{ $period->cutoff_start->toDateString() }}</td>
-                        <td>{{ $period->cutoff_end->toDateString() }}</td>
-                        <td>{{ $period->pay_date->toDateString() }}</td>
-                        <td><a href="{{ route('organization.periods.edit', $period) }}">Edit</a></td>
+                        <td class="num font-medium">{{ $period->period_no }}</td>
+                        <td class="tabular">{{ $period->cutoff_start->toDateString() }}</td>
+                        <td class="tabular">{{ $period->cutoff_end->toDateString() }}</td>
+                        <td class="tabular font-medium">{{ $period->pay_date->toDateString() }}</td>
+                        <td class="actions">
+                            <a href="{{ route('organization.periods.edit', $period) }}" class="btn btn-ghost btn-sm">Edit</a>
+                        </td>
                     </tr>
                 @endforeach
-            </tbody>
-        </table>
+            </x-table>
+        </x-card>
     @empty
-        <p>No payroll years generated yet.</p>
+        <x-card>
+            <p class="note">No payroll years generated yet. Generate one above before creating a payroll run.</p>
+        </x-card>
     @endforelse
-</body>
-</html>
+@endsection

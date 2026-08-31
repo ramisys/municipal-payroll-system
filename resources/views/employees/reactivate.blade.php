@@ -1,55 +1,61 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>Reactivate employee — {{ config('app.name') }}</title>
-</head>
-<body>
-    <p><a href="{{ route('employees.index') }}">&larr; Employees</a></p>
+@extends('layouts.app')
 
-    <h1>Reactivate — {{ $employee->fullName() }} ({{ $employee->employee_no }})</h1>
+@section('title', 'Reactivate employee')
+@section('heading', 'Reactivate employee')
 
-    <p>The original record and its full history are preserved (UC-10 A1). A new compensation profile entry will be required separately.</p>
+@section('content')
+    <x-page-header
+        title="Reactivate {{ $employee->fullName() }}"
+        subtitle="{{ $employee->employee_no }}"
+        :back="route('employees.index')" back-label="Employees" />
 
-    @if ($errors->any())
-        <ul role="alert">
-            @foreach ($errors->all() as $error)
-                <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-    @endif
+    <div class="max-w-2xl space-y-4">
+        <x-alert type="info" title="What reactivating does">
+            The original record and its full history are preserved (UC-10 A1). A new compensation
+            profile entry will be required separately before this employee can be paid.
+        </x-alert>
 
-    <form method="POST" action="{{ route('employees.reactivate', $employee) }}">
-        @csrf
+        <x-card>
+            <form method="POST" action="{{ route('employees.reactivate', $employee) }}" class="space-y-4">
+                @csrf
 
-        <p><label for="date_hired">New date hired</label><br>
-        <input type="date" id="date_hired" name="date_hired" value="{{ old('date_hired') }}" required autofocus></p>
+                <x-field label="New date hired" name="date_hired" required>
+                    <input type="date" id="date_hired" name="date_hired" class="input"
+                           value="{{ old('date_hired') }}" required autofocus>
+                </x-field>
 
-        <p><label for="department_id">Department</label><br>
-        <select id="department_id" name="department_id" required>
-            <option value="">Select</option>
-            @foreach ($departments as $department)
-                <option value="{{ $department->department_id }}" @selected(old('department_id') == $department->department_id)>{{ $department->department_name }}</option>
-            @endforeach
-        </select></p>
+                <x-field label="Department" name="department_id" required>
+                    <select id="department_id" name="department_id" class="select" required>
+                        <option value="">Select</option>
+                        @foreach ($departments as $department)
+                            <option value="{{ $department->department_id }}" @selected(old('department_id') == $department->department_id)>{{ $department->department_name }}</option>
+                        @endforeach
+                    </select>
+                </x-field>
 
-        <p><label for="position_id">Position</label><br>
-        <select id="position_id" name="position_id" required>
-            <option value="">Select</option>
-            @foreach ($positions as $position)
-                <option value="{{ $position->position_id }}" @selected(old('position_id') == $position->position_id)>{{ $position->position_title }}</option>
-            @endforeach
-        </select></p>
+                <x-field label="Position" name="position_id" required>
+                    <select id="position_id" name="position_id" class="select" required>
+                        <option value="">Select</option>
+                        @foreach ($positions as $position)
+                            <option value="{{ $position->position_id }}" @selected(old('position_id') == $position->position_id)>{{ $position->position_title }}</option>
+                        @endforeach
+                    </select>
+                </x-field>
 
-        <p><label for="employment_status_id">Employment status</label><br>
-        <select id="employment_status_id" name="employment_status_id" required>
-            <option value="">Select</option>
-            @foreach ($employmentStatuses as $status)
-                <option value="{{ $status->employment_status_id }}" @selected(old('employment_status_id') == $status->employment_status_id)>{{ $status->status_name }}</option>
-            @endforeach
-        </select></p>
+                <x-field label="Employment status" name="employment_status_id" required>
+                    <select id="employment_status_id" name="employment_status_id" class="select" required>
+                        <option value="">Select</option>
+                        @foreach ($employmentStatuses as $status)
+                            <option value="{{ $status->employment_status_id }}" @selected(old('employment_status_id') == $status->employment_status_id)>{{ $status->status_name }}</option>
+                        @endforeach
+                    </select>
+                </x-field>
 
-        <button type="submit">Reactivate employee</button>
-    </form>
-</body>
-</html>
+                <div class="flex items-center gap-2 pt-1">
+                    <button type="submit" class="btn btn-primary">Reactivate employee</button>
+                    <a href="{{ route('employees.index') }}" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </x-card>
+    </div>
+@endsection

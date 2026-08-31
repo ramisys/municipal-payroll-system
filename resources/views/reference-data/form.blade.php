@@ -1,50 +1,72 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>{{ $item->exists ? 'Edit' : 'New' }} {{ strtolower($config['label']) }} — {{ config('app.name') }}</title>
-</head>
-<body>
-    <p><a href="{{ route('reference-data.index', $type) }}">&larr; {{ $config['label'] }}s</a></p>
+@extends('layouts.app')
 
-    <h1>{{ $item->exists ? 'Edit' : 'New' }} {{ strtolower($config['label']) }}</h1>
+@section('title', ($item->exists ? 'Edit' : 'New') . ' ' . strtolower($config['label']))
+@section('heading', ($item->exists ? 'Edit' : 'New') . ' ' . strtolower($config['label']))
 
-    @if ($errors->any())
-        <ul role="alert">
-            @foreach ($errors->all() as $error)
-                <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-    @endif
+@section('content')
+    <x-page-header
+        title="{{ $item->exists ? 'Edit' : 'New' }} {{ strtolower($config['label']) }}"
+        :back="route('reference-data.index', $type)" back-label="{{ $config['label'] }}s" />
 
-    <form method="POST" action="{{ $item->exists ? route('reference-data.update', [$type, $item->getKey()]) : route('reference-data.store', $type) }}">
-        @csrf
-        @if ($item->exists)
-            @method('PUT')
-        @endif
-
-        @foreach ($config['columns'] as $column)
-            @php
-                $field = $column['field'];
-                $currentValue = $item->exists ? (int) $item->{$field} : null;
-                $selected = old($field, $currentValue);
-                $selected = $selected === null ? null : (int) $selected;
-            @endphp
-            <p>
-                <label for="{{ $field }}">{{ $column['label'] }}</label><br>
-
-                @if ($column['type'] === 'boolean_required')
-                    <label><input type="radio" name="{{ $field }}" value="1" @checked($selected === 1) required> Yes</label>
-                    <label><input type="radio" name="{{ $field }}" value="0" @checked($selected === 0)> No</label>
-                @elseif ($column['type'] === 'boolean')
-                    <input type="checkbox" id="{{ $field }}" name="{{ $field }}" value="1" @checked($selected === 1)>
-                @else
-                    <input type="text" id="{{ $field }}" name="{{ $field }}" value="{{ old($field, $item->{$field}) }}">
+    <div class="max-w-2xl">
+        <x-card>
+            <form method="POST"
+                  action="{{ $item->exists ? route('reference-data.update', [$type, $item->getKey()]) : route('reference-data.store', $type) }}"
+                  class="space-y-4">
+                @csrf
+                @if ($item->exists)
+                    @method('PUT')
                 @endif
-            </p>
-        @endforeach
 
-        <button type="submit">Save</button>
-    </form>
-</body>
-</html>
+                @foreach ($config['columns'] as $column)
+                    @php
+                        $field = $column['field'];
+                        $currentValue = $item->exists ? (int) $item->{$field} : null;
+                        $selected = old($field, $currentValue);
+                        $selected = $selected === null ? null : (int) $selected;
+                    @endphp
+
+                    @if ($column['type'] === 'boolean_required')
+                        {{-- An explicit Yes/No, not a checkbox: this flag has no
+                             safe default, so it must be chosen deliberately. --}}
+                        <fieldset>
+                            <legend class="label">{{ $column['label'] }} <span class="text-bad-fg" aria-hidden="true">*</span></legend>
+                            <div class="flex flex-wrap gap-2">
+                                @foreach ([1 => 'Yes', 0 => 'No'] as $value => $label)
+                                    <label class="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-line-strong cursor-pointer hover:bg-slate-50 transition-colors duration-200">
+                                        <input type="radio" name="{{ $field }}" value="{{ $value }}"
+                                               class="checkbox rounded-full"
+                                               @checked($selected === $value) @if ($value === 1) required @endif>
+                                        <span class="text-sm text-ink">{{ $label }}</span>
+                                    </label>
+                                @endforeach
+                            </div>
+                            @error($field)<span class="field-error">{{ $message }}</span>@enderror
+                        </fieldset>
+
+                    @elseif ($column['type'] === 'boolean')
+                        <div>
+                            <label for="{{ $field }}" class="inline-flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" id="{{ $field }}" name="{{ $field }}" value="1"
+                                       class="checkbox" @checked($selected === 1)>
+                                <span class="text-sm font-medium text-ink">{{ $column['label'] }}</span>
+                            </label>
+                            @error($field)<span class="field-error">{{ $message }}</span>@enderror
+                        </div>
+
+                    @else
+                        <x-field :label="$column['label']" :name="$field">
+                            <input type="text" id="{{ $field }}" name="{{ $field }}" class="input"
+                                   value="{{ old($field, $item->{$field}) }}" @if ($loop->first) autofocus @endif>
+                        </x-field>
+                    @endif
+                @endforeach
+
+                <div class="flex items-center gap-2 pt-1">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                    <a href="{{ route('reference-data.index', $type) }}" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </x-card>
+    </div>
+@endsection

@@ -1,27 +1,24 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>Edit holiday — {{ config('app.name') }}</title>
-</head>
-<body>
-    <p><a href="{{ route('organization.holidays.index') }}">&larr; Holiday calendar</a></p>
+@extends('layouts.app')
 
-    <h1>Edit holiday</h1>
+@section('title', 'Edit holiday')
+@section('heading', 'Edit holiday')
 
-    @if ($errors->any())
-        <ul role="alert">
-            @foreach ($errors->all() as $error)
-                <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-    @endif
+@section('content')
+    <x-page-header title="Edit holiday" subtitle="{{ $holiday->holiday_name }}"
+                   :back="route('organization.holidays.index')" back-label="Holiday calendar" />
 
-    <form method="POST" action="{{ route('organization.holidays.update', $holiday) }}">
-        @csrf
-        @method('PUT')
-        @include('organization.holidays._fields')
-        <button type="submit">Save</button>
-    </form>
-</body>
-</html>
+    <div class="max-w-2xl">
+        <x-card>
+            <form method="POST" action="{{ route('organization.holidays.update', $holiday) }}" class="space-y-4">
+                @csrf
+                @method('PUT')
+                @include('organization.holidays._fields')
+
+                <div class="flex items-center gap-2 pt-1">
+                    <button type="submit" class="btn btn-primary">Save changes</button>
+                    <a href="{{ route('organization.holidays.index') }}" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </x-card>
+    </div>
+@endsection

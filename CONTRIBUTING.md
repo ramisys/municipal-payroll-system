@@ -10,6 +10,8 @@ Laravel 11 / PHP 8.3+ / MySQL 8.4 (InnoDB) / PhpSpreadsheet / BCMath. See [docs/
 
 ```
 composer install
+npm install
+npm run build
 cp .env.example .env
 php artisan key:generate
 # create the database named in .env (DB_DATABASE, default municipal_payroll)
@@ -17,6 +19,16 @@ php artisan migrate --seed
 ```
 
 `php artisan migrate --seed` should run clean on an empty database — that is the item 0.2/0.3 gate. If it does not, that is a bug, not an environment problem to work around.
+
+`npm run build` is not optional. Every screen extends a Blade layout that pulls its stylesheet through
+`@vite`, and `@vite` throws when `public/build/manifest.json` is absent — a clone without it does not
+render, it errors. `public/build/` is gitignored (AD-16), so the build runs on the clone, not in the
+repository. While working on the UI, `npm run dev` serves the assets with hot reload instead.
+
+The front end is Tailwind compiled locally. It references no CDN, webfont, or other remote asset, so a
+built artifact renders correctly on a machine with no network — see
+[docs/deployment-rehearsal.md](docs/deployment-rehearsal.md). Keep it that way: a Google Fonts `<link>`
+or a CDN `<script>` would pass every test here and fail silently on the deployment target.
 
 ### A known environment issue on Windows + WSL-mounted repositories
 

@@ -1,23 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>New column mapping version — {{ config('app.name') }}</title>
-</head>
-<body>
-    <p><a href="{{ route('import-column-maps.index') }}">&larr; Register column mapping</a></p>
+@extends('layouts.app')
 
-    <h1>Publish a new column mapping version</h1>
-    <p><small>Enter the exact header text this register layout uses for each field. A renamed or reordered header is absorbed here — no source change (AD-17).</small></p>
+@section('title', 'New column mapping version')
+@section('heading', 'Publish a new column mapping version')
 
-    @if ($errors->any())
-        <ul role="alert">
-            @foreach ($errors->all() as $error)
-                <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-    @endif
-
+@section('content')
     @php
         $labels = [
             'BASIC' => 'Basic Pay', 'OT' => 'Overtime Pay', 'NIGHT_DIFF' => 'Night Shift Differential',
@@ -28,58 +14,89 @@
         $old = fn (string $path, ?string $default = null) => old($path, data_get($bindings, $path, $default));
     @endphp
 
-    <form method="POST" action="{{ route('import-column-maps.store') }}">
-        @csrf
+    <x-page-header
+        title="Publish a new column mapping version"
+        :back="route('import-column-maps.index')" back-label="Register column mapping" />
 
-        <p>
-            <label for="effective_from">Effective from</label><br>
-            <input type="date" id="effective_from" name="effective_from" value="{{ old('effective_from') }}" required>
-        </p>
+    <div class="max-w-4xl space-y-4">
+        <x-note>
+            Enter the exact header text this register layout uses for each field. A renamed or reordered
+            header is absorbed here — no source change (AD-17).
+        </x-note>
 
-        <p>
-            <label for="employee_no">Employee number column header</label><br>
-            <input type="text" id="employee_no" name="employee_no" value="{{ $old('employee_no', 'Employee No.') }}" required>
-        </p>
+        <form method="POST" action="{{ route('import-column-maps.store') }}" class="space-y-4">
+            @csrf
 
-        <h2>Earnings</h2>
-        @foreach ($earningCodes as $code)
-            <p>
-                <label for="earnings_{{ $code }}">{{ $labels[$code] ?? $code }}</label><br>
-                <input type="text" id="earnings_{{ $code }}" name="earnings[{{ $code }}]" value="{{ $old("earnings.{$code}") }}" required>
-            </p>
-        @endforeach
+            <x-card title="Version">
+                <div class="form-grid">
+                    <x-field label="Effective from" name="effective_from" required>
+                        <input type="date" id="effective_from" name="effective_from" class="input"
+                               value="{{ old('effective_from') }}" required autofocus>
+                    </x-field>
 
-        <h2>Deductions (employee share)</h2>
-        @foreach ($deductionCodes as $code)
-            <p>
-                <label for="deductions_{{ $code }}">{{ $labels[$code] ?? $code }} Contribution</label><br>
-                <input type="text" id="deductions_{{ $code }}" name="deductions[{{ $code }}]" value="{{ $old("deductions.{$code}") }}" required>
-            </p>
-        @endforeach
+                    <x-field label="Employee number column header" name="employee_no" required>
+                        <input type="text" id="employee_no" name="employee_no" class="input font-mono"
+                               value="{{ $old('employee_no', 'Employee No.') }}" required>
+                    </x-field>
+                </div>
+            </x-card>
 
-        <h2>Employer shares</h2>
-        @foreach ($employerShareCodes as $code)
-            <p>
-                <label for="employer_shares_{{ $code }}">{{ $labels[$code] ?? $code }} ER Share</label><br>
-                <input type="text" id="employer_shares_{{ $code }}" name="employer_shares[{{ $code }}]" value="{{ $old("employer_shares.{$code}") }}" required>
-            </p>
-        @endforeach
+            <x-card title="Earnings">
+                <div class="form-grid">
+                    @foreach ($earningCodes as $code)
+                        <x-field :label="$labels[$code] ?? $code" name="earnings[{{ $code }}]" required>
+                            <input type="text" id="earnings_{{ $code }}" name="earnings[{{ $code }}]"
+                                   class="input font-mono" value="{{ $old("earnings.{$code}") }}" required>
+                        </x-field>
+                    @endforeach
+                </div>
+            </x-card>
 
-        <h2>Totals</h2>
-        <p>
-            <label for="gross_pay">Gross pay column header</label><br>
-            <input type="text" id="gross_pay" name="gross_pay" value="{{ $old('gross_pay', 'Gross Pay') }}" required>
-        </p>
-        <p>
-            <label for="total_deductions">Total deductions column header</label><br>
-            <input type="text" id="total_deductions" name="total_deductions" value="{{ $old('total_deductions', 'Total Deductions') }}" required>
-        </p>
-        <p>
-            <label for="net_pay">Net pay column header</label><br>
-            <input type="text" id="net_pay" name="net_pay" value="{{ $old('net_pay', 'Net Pay') }}" required>
-        </p>
+            <x-card title="Deductions (employee share)">
+                <div class="form-grid">
+                    @foreach ($deductionCodes as $code)
+                        <x-field label="{{ $labels[$code] ?? $code }} Contribution" name="deductions[{{ $code }}]" required>
+                            <input type="text" id="deductions_{{ $code }}" name="deductions[{{ $code }}]"
+                                   class="input font-mono" value="{{ $old("deductions.{$code}") }}" required>
+                        </x-field>
+                    @endforeach
+                </div>
+            </x-card>
 
-        <button type="submit">Publish version</button>
-    </form>
-</body>
-</html>
+            <x-card title="Employer shares">
+                <div class="form-grid">
+                    @foreach ($employerShareCodes as $code)
+                        <x-field label="{{ $labels[$code] ?? $code }} ER Share" name="employer_shares[{{ $code }}]" required>
+                            <input type="text" id="employer_shares_{{ $code }}" name="employer_shares[{{ $code }}]"
+                                   class="input font-mono" value="{{ $old("employer_shares.{$code}") }}" required>
+                        </x-field>
+                    @endforeach
+                </div>
+            </x-card>
+
+            <x-card title="Totals">
+                <div class="form-grid">
+                    <x-field label="Gross pay column header" name="gross_pay" required>
+                        <input type="text" id="gross_pay" name="gross_pay" class="input font-mono"
+                               value="{{ $old('gross_pay', 'Gross Pay') }}" required>
+                    </x-field>
+
+                    <x-field label="Total deductions column header" name="total_deductions" required>
+                        <input type="text" id="total_deductions" name="total_deductions" class="input font-mono"
+                               value="{{ $old('total_deductions', 'Total Deductions') }}" required>
+                    </x-field>
+
+                    <x-field label="Net pay column header" name="net_pay" required>
+                        <input type="text" id="net_pay" name="net_pay" class="input font-mono"
+                               value="{{ $old('net_pay', 'Net Pay') }}" required>
+                    </x-field>
+                </div>
+            </x-card>
+
+            <div class="flex items-center gap-2">
+                <button type="submit" class="btn btn-primary">Publish version</button>
+                <a href="{{ route('import-column-maps.index') }}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </div>
+@endsection

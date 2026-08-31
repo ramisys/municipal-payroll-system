@@ -1,71 +1,97 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>Preview register import — run #{{ $run->payroll_run_id }} — {{ config('app.name') }}</title>
-</head>
-<body>
-    <p><a href="{{ route('payroll-imports.create', $run) }}">&larr; Import computed register</a></p>
+@extends('layouts.app')
 
-    <h1>Preview — run #{{ $run->payroll_run_id }}, {{ $map->map_name }} v{{ $map->version_no }}</h1>
+@section('title', 'Preview register import — run #' . $run->payroll_run_id)
+@section('heading', 'Preview register import — run #' . $run->payroll_run_id)
 
-    <p><small>UC-18 A2 — nothing has been written yet. Confirming below reconciles and commits this exact file in one transaction (AC-2.8.7); if any part fails, none of it is written.</small></p>
+@section('content')
+    <x-page-header
+        title="Preview register import"
+        subtitle="Run #{{ $run->payroll_run_id }} · {{ $map->map_name }} v{{ $map->version_no }}"
+        :back="route('payroll-imports.create', $run)" back-label="Import computed register" />
 
     @if ($defects !== [])
-        <h2>Refused — {{ count($defects) }} reconciliation defect(s)</h2>
-        <table border="1" cellpadding="4">
-            <thead>
-                <tr><th>Type</th><th>Row</th><th>Employee no.</th><th>Message</th></tr>
-            </thead>
-            <tbody>
+        {{-- A defective register is refused outright — there is no partial
+             commit to offer, so the only action here is to cancel. --}}
+        <x-alert type="bad" title="Refused — {{ count($defects) }} reconciliation defect(s).">
+            This file does not reconcile and cannot be committed. Correct it at source and import again.
+        </x-alert>
+
+        <x-card title="Reconciliation defects" :flush="true">
+            <x-table>
+                <x-slot:head>
+                    <th>Type</th>
+                    <th class="num">Row</th>
+                    <th>Employee no.</th>
+                    <th>Message</th>
+                </x-slot:head>
+
                 @foreach ($defects as $defect)
                     <tr>
-                        <td>{{ $defect['type'] }}</td>
-                        <td>{{ $defect['row'] ?? '—' }}</td>
-                        <td>{{ $defect['employee_no'] ?? '—' }}</td>
+                        <td class="font-medium text-bad-fg">{{ $defect['type'] }}</td>
+                        <td class="num">{{ $defect['row'] ?? '—' }}</td>
+                        <td class="tabular">{{ $defect['employee_no'] ?? '—' }}</td>
                         <td>{{ $defect['message'] }}</td>
                     </tr>
                 @endforeach
-            </tbody>
-        </table>
+            </x-table>
+        </x-card>
 
         <form method="POST" action="{{ route('payroll-imports.cancel', $run) }}">
             @csrf
-            <button type="submit">Cancel</button>
+            <button type="submit" class="btn btn-secondary">Cancel import</button>
         </form>
     @else
-        <p>
+        <x-alert type="warn" title="Nothing has been written yet.">
+            UC-18 A2 — confirming below reconciles and commits this exact file in one transaction
+            (AC-2.8.7); if any part fails, none of it is written.
+        </x-alert>
+
+        <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
+            <x-stat label="Rows" :value="$result->rowCount" />
+            <x-stat label="Employees matched" :value="$result->matchedEmployeeCount" />
+            <x-stat label="Control gross" :value="$result->controlTotalGross" />
+            <x-stat label="Control deductions" :value="$result->controlTotalDeductions" tone="bad" />
+            <x-stat label="Control net" :value="$result->controlTotalNet" tone="ok" />
+        </div>
+
+        <p class="note">
             {{ $result->rowCount }} row(s) reconcile — gross {{ $result->controlTotalGross }},
             deductions {{ $result->controlTotalDeductions }}, net {{ $result->controlTotalNet }},
             {{ $result->matchedEmployeeCount }} employee(s) matched.
         </p>
 
-        <table border="1" cellpadding="4">
-            <thead>
-                <tr><th>Row</th><th>Employee no.</th><th>Gross</th><th>Deductions</th><th>Net</th></tr>
-            </thead>
-            <tbody>
+        <x-card title="Rows to be committed" :flush="true">
+            <x-table>
+                <x-slot:head>
+                    <th class="num">Row</th>
+                    <th>Employee no.</th>
+                    <th class="num">Gross</th>
+                    <th class="num">Deductions</th>
+                    <th class="num">Net</th>
+                </x-slot:head>
+
                 @foreach ($rows as $row)
                     <tr>
-                        <td>{{ $row['row_number'] }}</td>
-                        <td>{{ $row['employee_no'] }}</td>
-                        <td>{{ $row['gross_pay'] }}</td>
-                        <td>{{ $row['total_deductions'] }}</td>
-                        <td>{{ $row['net_pay'] }}</td>
+                        <td class="num">{{ $row['row_number'] }}</td>
+                        <td class="font-medium tabular">{{ $row['employee_no'] }}</td>
+                        <td class="num">{{ $row['gross_pay'] }}</td>
+                        <td class="num">{{ $row['total_deductions'] }}</td>
+                        <td class="num font-semibold">{{ $row['net_pay'] }}</td>
                     </tr>
                 @endforeach
-            </tbody>
-        </table>
+            </x-table>
+        </x-card>
 
-        <form method="POST" action="{{ route('payroll-imports.commit', $run) }}">
-            @csrf
-            <button type="submit">Confirm and commit</button>
-        </form>
+        <div class="flex flex-wrap items-center gap-2">
+            <form method="POST" action="{{ route('payroll-imports.commit', $run) }}">
+                @csrf
+                <button type="submit" class="btn btn-primary">Confirm and commit</button>
+            </form>
 
-        <form method="POST" action="{{ route('payroll-imports.cancel', $run) }}">
-            @csrf
-            <button type="submit">Cancel</button>
-        </form>
+            <form method="POST" action="{{ route('payroll-imports.cancel', $run) }}">
+                @csrf
+                <button type="submit" class="btn btn-secondary">Cancel import</button>
+            </form>
+        </div>
     @endif
-</body>
-</html>
+@endsection

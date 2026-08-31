@@ -1,31 +1,32 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>Change password — {{ config('app.name') }}</title>
-</head>
-<body>
-    <h1>Change your password</h1>
+@extends('layouts.guest')
 
-    <p>Your account still holds its initial password. You must set a new one before continuing.</p>
+@section('title', 'Change password')
+@section('heading', 'Change your password')
+@section('subheading', 'Your account still holds its initial password. You must set a new one before continuing.')
 
+@section('content')
     @if ($errors->any())
-        <p role="alert">{{ $errors->first() }}</p>
+        <x-alert type="bad" class="mb-4">{{ $errors->first() }}</x-alert>
     @endif
 
-    <form method="POST" action="{{ route('password.update') }}">
+    <form method="POST" action="{{ route('password.update') }}" class="space-y-4">
         @csrf
 
-        <label for="current_password">Current password</label>
-        <input type="password" id="current_password" name="current_password" required>
+        <x-field label="Current password" name="current_password" required>
+            <input type="password" id="current_password" name="current_password"
+                   class="input" required autocomplete="current-password" autofocus>
+        </x-field>
 
-        <label for="password">New password</label>
-        <input type="password" id="password" name="password" required minlength="8">
+        <x-field label="New password" name="password" required hint="At least 8 characters.">
+            <input type="password" id="password" name="password"
+                   class="input" required minlength="8" autocomplete="new-password">
+        </x-field>
 
-        <label for="password_confirmation">Confirm new password</label>
-        <input type="password" id="password_confirmation" name="password_confirmation" required minlength="8">
+        <x-field label="Confirm new password" name="password_confirmation" required>
+            <input type="password" id="password_confirmation" name="password_confirmation"
+                   class="input" required minlength="8" autocomplete="new-password">
+        </x-field>
 
-        <button type="submit">Change password</button>
+        <button type="submit" class="btn btn-primary w-full">Change password</button>
     </form>
-</body>
-</html>
+@endsection

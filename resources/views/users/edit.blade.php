@@ -1,37 +1,37 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>Edit user — {{ config('app.name') }}</title>
-</head>
-<body>
-    <p><a href="{{ route('users.index') }}">&larr; Users</a></p>
+@extends('layouts.app')
 
-    <h1>Edit account</h1>
+@section('title', 'Edit user')
+@section('heading', 'Edit account — ' . $targetUser->username)
 
-    @if ($errors->any())
-        <ul role="alert">
-            @foreach ($errors->all() as $error)
-                <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-    @endif
+@section('content')
+    <x-page-header title="Edit account" subtitle="{{ $targetUser->username }}"
+                   :back="route('users.index')" back-label="User accounts" />
 
-    <form method="POST" action="{{ route('users.update', $targetUser) }}">
-        @csrf
-        @method('PUT')
+    <div class="max-w-2xl">
+        <x-card>
+            <form method="POST" action="{{ route('users.update', $targetUser) }}" class="space-y-4">
+                @csrf
+                @method('PUT')
 
-        <label for="username">Username</label>
-        <input type="text" id="username" name="username" value="{{ old('username', $targetUser->username) }}" required autofocus>
+                <x-field label="Username" name="username" required>
+                    <input type="text" id="username" name="username" class="input"
+                           value="{{ old('username', $targetUser->username) }}" required autofocus
+                           autocapitalize="none" spellcheck="false">
+                </x-field>
 
-        <label for="role_id">Role</label>
-        <select id="role_id" name="role_id" required>
-            @foreach ($roles as $role)
-                <option value="{{ $role->role_id }}" @selected(old('role_id', $targetUser->role_id) == $role->role_id)>{{ $role->role_name }}</option>
-            @endforeach
-        </select>
+                <x-field label="Role" name="role_id" required>
+                    <select id="role_id" name="role_id" class="select" required>
+                        @foreach ($roles as $role)
+                            <option value="{{ $role->role_id }}" @selected(old('role_id', $targetUser->role_id) == $role->role_id)>{{ $role->role_name }}</option>
+                        @endforeach
+                    </select>
+                </x-field>
 
-        <button type="submit">Save</button>
-    </form>
-</body>
-</html>
+                <div class="flex items-center gap-2 pt-1">
+                    <button type="submit" class="btn btn-primary">Save changes</button>
+                    <a href="{{ route('users.index') }}" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </x-card>
+    </div>
+@endsection

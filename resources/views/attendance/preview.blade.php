@@ -1,86 +1,112 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>Preview attendance import — {{ config('app.name') }}</title>
-</head>
-<body>
-    <p><a href="{{ route('attendance-import.create') }}">&larr; Import attendance</a></p>
+@extends('layouts.app')
 
-    <h1>Preview — {{ $period->payroll_year }} P{{ $period->period_no }} ({{ $period->cutoff_start->toDateString() }} to {{ $period->cutoff_end->toDateString() }})</h1>
+@section('title', 'Preview attendance import')
+@section('heading', 'Preview attendance import')
 
-    <p>
+@section('content')
+    <x-page-header
+        title="Preview import"
+        subtitle="{{ $period->payroll_year }} P{{ $period->period_no }} ({{ $period->cutoff_start->toDateString() }} to {{ $period->cutoff_end->toDateString() }})"
+        :back="route('attendance-import.create')" back-label="Import attendance" />
+
+    {{-- The counts are the decision, so they lead — as tiles to scan, and as a
+         sentence underneath, which is also the phrasing AC-1.3.1 is checked on. --}}
+    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <x-stat label="Will be committed" :value="count($accepted)" hint="row(s)" tone="ok" />
+        <x-stat label="Rejected" :value="count($rejected)" hint="row(s)"
+                :tone="count($rejected) > 0 ? 'bad' : 'default'" />
+        <x-stat label="Will replace an existing record" :value="$existingCount" hint="employee/date combination(s)"
+                :tone="$existingCount > 0 ? 'brand' : 'default'" />
+    </div>
+
+    <p class="note">
         {{ count($accepted) }} row(s) will be committed, {{ count($rejected) }} row(s) rejected.
         @if ($existingCount > 0)
             {{ $existingCount }} of the accepted employee/date combinations already have a stored record and will be replaced.
         @endif
     </p>
 
-    <p><small>UC-13 AC-1.3.1 — nothing has been written yet. Confirming below commits every accepted row in one transaction; if any part of the commit fails, none of it is written (all-or-nothing).</small></p>
+    <x-alert type="warn" title="Nothing has been written yet.">
+        UC-13 AC-1.3.1 — confirming below commits every accepted row in one transaction. If any part
+        of the commit fails, none of it is written (all-or-nothing).
+        @if ($existingCount > 0)
+            <strong class="block mt-1">
+                {{ $existingCount }} of the accepted employee/date combinations already have a stored
+                record and will be replaced.
+            </strong>
+        @endif
+    </x-alert>
 
     @if (count($rejected) > 0)
-        <h2>Rejected rows</h2>
-        <table border="1" cellpadding="4">
-            <thead>
-                <tr><th>Row</th><th>Reason</th></tr>
-            </thead>
-            <tbody>
+        <x-card title="Rejected rows" subtitle="These will not be committed. Correct them in the source file and import again."
+                :flush="true">
+            <x-table>
+                <x-slot:head>
+                    <th class="num">Row</th>
+                    <th>Reason</th>
+                </x-slot:head>
+
                 @foreach ($rejected as $row)
                     <tr>
-                        <td>{{ $row['row_number'] }}</td>
-                        <td>{{ $row['reason'] }}</td>
+                        <td class="num font-medium">{{ $row['row_number'] }}</td>
+                        <td class="text-bad-fg">{{ $row['reason'] }}</td>
                     </tr>
                 @endforeach
-            </tbody>
-        </table>
+            </x-table>
+        </x-card>
     @endif
 
     @if (count($accepted) > 0)
-        <h2>Accepted rows</h2>
-        <table border="1" cellpadding="4">
-            <thead>
-                <tr>
-                    <th>Row</th>
+        <x-card title="Accepted rows" :flush="true">
+            <x-table>
+                <x-slot:head>
+                    <th class="num">Row</th>
                     <th>Employee no.</th>
                     <th>Date</th>
                     <th>Time in</th>
                     <th>Time out</th>
-                    <th>Hours worked</th>
-                    <th>Late (min)</th>
-                    <th>Undertime (min)</th>
-                    <th>Overtime (hrs)</th>
-                    <th>Night diff. (hrs)</th>
+                    <th class="num">Hours worked</th>
+                    <th class="num">Late (min)</th>
+                    <th class="num">Undertime (min)</th>
+                    <th class="num">Overtime (hrs)</th>
+                    <th class="num">Night diff. (hrs)</th>
                     <th>Day classification</th>
-                </tr>
-            </thead>
-            <tbody>
+                </x-slot:head>
+
                 @foreach ($accepted as $row)
                     <tr>
-                        <td>{{ $row['row_number'] }}</td>
-                        <td>{{ $row['employee_no'] }}</td>
-                        <td>{{ $row['work_date'] }}</td>
-                        <td>{{ $row['time_in'] }}</td>
-                        <td>{{ $row['time_out'] }}</td>
-                        <td>{{ $row['hours_worked'] }}</td>
-                        <td>{{ $row['late_minutes'] }}</td>
-                        <td>{{ $row['undertime_minutes'] }}</td>
-                        <td>{{ $row['overtime_hours'] }}</td>
-                        <td>{{ $row['night_diff_hours'] }}</td>
+                        <td class="num">{{ $row['row_number'] }}</td>
+                        <td class="font-medium tabular">{{ $row['employee_no'] }}</td>
+                        <td class="tabular">{{ $row['work_date'] }}</td>
+                        <td class="tabular">{{ $row['time_in'] }}</td>
+                        <td class="tabular">{{ $row['time_out'] }}</td>
+                        <td class="num">{{ $row['hours_worked'] }}</td>
+                        <td class="num">{{ $row['late_minutes'] }}</td>
+                        <td class="num">{{ $row['undertime_minutes'] }}</td>
+                        <td class="num">{{ $row['overtime_hours'] }}</td>
+                        <td class="num">{{ $row['night_diff_hours'] }}</td>
                         <td>{{ $row['day_classification'] }}</td>
                     </tr>
                 @endforeach
-            </tbody>
-        </table>
-
-        <form method="POST" action="{{ route('attendance-import.commit') }}">
-            @csrf
-            <button type="submit">Confirm and commit {{ count($accepted) }} row(s)</button>
-        </form>
+            </x-table>
+        </x-card>
     @endif
 
-    <form method="POST" action="{{ route('attendance-import.cancel') }}">
-        @csrf
-        <button type="submit">Cancel</button>
-    </form>
-</body>
-</html>
+    {{-- Commit and cancel are separate forms posting to separate routes, so they
+         sit side by side here rather than nesting. --}}
+    <div class="flex flex-wrap items-center gap-2">
+        @if (count($accepted) > 0)
+            <form method="POST" action="{{ route('attendance-import.commit') }}">
+                @csrf
+                <button type="submit" class="btn btn-primary">
+                    Confirm and commit {{ count($accepted) }} row(s)
+                </button>
+            </form>
+        @endif
+
+        <form method="POST" action="{{ route('attendance-import.cancel') }}">
+            @csrf
+            <button type="submit" class="btn btn-secondary">Cancel import</button>
+        </form>
+    </div>
+@endsection

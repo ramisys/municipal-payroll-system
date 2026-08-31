@@ -30,7 +30,9 @@ pre-oral-demonstration-plan.md §6 Table 6, W8: feature freeze — the codebase 
 
 ## What is still open
 
-**The physical test.** Build the artifact on the development machine, copy the whole tree (application code, `vendor/`, `public/build/` if a front-end build exists yet, `.env` configured for the target's local MySQL) to the staging/target machine, disconnect that machine's network, and run the same three checks above (`/` returns 200, `/up` returns 200, page renders with no missing-external-asset console errors). Record the result here as the closing entry in this table:
+**The physical test.** Build the artifact on the development machine, copy the whole tree (application code, `vendor/`, `public/build/`, `.env` configured for the target's local MySQL) to the staging/target machine, disconnect that machine's network, and run the same three checks above (`/` returns 200, `/up` returns 200, page renders with no missing-external-asset console errors). Record the result here as the closing entry in this table:
+
+> A front-end build now exists and `public/build/` is no longer conditional — it must be produced by `npm run build` on the development machine and copied across, because it is gitignored and `@vite` errors without its manifest. The stylesheet is Tailwind compiled locally; the select-control chevron is an inline `data:` URI and the interface uses a system font stack, so no webfont or CDN is fetched at runtime. Re-check that with `grep -rE "https?://" public/build/assets/` — the expected result is no match other than `www.w3.org` XML namespace strings, which are declarations, not fetches.
 
 | Rehearsed on | Date | Result |
 |---|---|---|

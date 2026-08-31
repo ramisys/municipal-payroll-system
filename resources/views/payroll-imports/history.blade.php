@@ -1,50 +1,60 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>Import history — run #{{ $run->payroll_run_id }} — {{ config('app.name') }}</title>
-</head>
-<body>
-    <p><a href="{{ route('payroll-runs.show', $run) }}">&larr; Run #{{ $run->payroll_run_id }}</a></p>
+@extends('layouts.app')
 
-    <h1>Import history — run #{{ $run->payroll_run_id }}</h1>
+@section('title', 'Import history — run #' . $run->payroll_run_id)
+@section('heading', 'Import history — run #' . $run->payroll_run_id)
 
-    <table border="1" cellpadding="4">
-        <thead>
-            <tr>
-                <th>Version</th>
-                <th>Current?</th>
+@section('content')
+    <x-page-header
+        title="Import history"
+        subtitle="Run #{{ $run->payroll_run_id }} — every register version imported into this run, newest supersedes older."
+        :back="route('payroll-runs.show', $run)" back-label="Run #{{ $run->payroll_run_id }}" />
+
+    <x-card :flush="true">
+        <x-table>
+            <x-slot:head>
+                <th class="num">Version</th>
+                <th>State</th>
                 <th>File</th>
                 <th>SHA-256</th>
                 <th>Imported by</th>
                 <th>Imported at</th>
-                <th>Rows</th>
-                <th>Control totals (gross / deductions / net)</th>
-                <th></th>
-            </tr>
-        </thead>
-        <tbody>
+                <th class="num">Rows</th>
+                <th class="num">Gross</th>
+                <th class="num">Deductions</th>
+                <th class="num">Net</th>
+                <th class="actions"><span class="sr-only">Actions</span></th>
+            </x-slot:head>
+
             @forelse ($imports as $import)
-                <tr>
-                    <td>{{ $import->version_no }}</td>
-                    <td>{{ $import->is_current ? 'Current' : 'Superseded' }}</td>
-                    <td>{{ $import->source_filename }}</td>
-                    <td><small>{{ $import->source_sha256 }}</small></td>
-                    <td>{{ $import->importedBy->username }}</td>
-                    <td>{{ $import->imported_at->toDateTimeString() }}</td>
-                    <td>{{ $import->row_count }}</td>
-                    <td>{{ $import->control_total_gross }} / {{ $import->control_total_deductions }} / {{ $import->control_total_net }}</td>
+                <tr @class(['bg-brand-50/40' => $import->is_current])>
+                    <td class="num font-medium">v{{ $import->version_no }}</td>
                     <td>
-                        <a href="{{ route('payroll-imports.show', [$run, $import]) }}">Detail</a>
-                        <a href="{{ route('payroll-imports.download', [$run, $import]) }}">Download</a>
+                        {{-- Label is passed explicitly: these exact words are what
+                             UC-33's checks look for, so they must not be uppercased. --}}
+                        <x-status-badge :value="$import->is_current ? 'CURRENT' : 'SUPERSEDED'"
+                                        :label="$import->is_current ? 'Current' : 'Superseded'" />
+                    </td>
+                    <td class="break-all">{{ $import->source_filename }}</td>
+                    <td class="max-w-[16rem]">
+                        <span class="code-cell">{{ $import->source_sha256 }}</span>
+                    </td>
+                    <td>{{ $import->importedBy->username }}</td>
+                    <td class="tabular whitespace-nowrap">{{ $import->imported_at->toDateTimeString() }}</td>
+                    <td class="num">{{ $import->row_count }}</td>
+                    <td class="num">{{ $import->control_total_gross }}</td>
+                    <td class="num">{{ $import->control_total_deductions }}</td>
+                    <td class="num font-semibold">{{ $import->control_total_net }}</td>
+                    <td class="actions">
+                        <div class="flex items-center gap-1">
+                            <a href="{{ route('payroll-imports.show', [$run, $import]) }}" class="btn btn-ghost btn-sm">Detail</a>
+                            <a href="{{ route('payroll-imports.download', [$run, $import]) }}" class="btn btn-ghost btn-sm">Download</a>
+                        </div>
                     </td>
                 </tr>
             @empty
-                <tr>
-                    <td colspan="9">No register has been imported into this run yet (UC-18).</td>
-                </tr>
+                <x-empty-state :colspan="11"
+                               message="No register has been imported into this run yet (UC-18)." />
             @endforelse
-        </tbody>
-    </table>
-</body>
-</html>
+        </x-table>
+    </x-card>
+@endsection

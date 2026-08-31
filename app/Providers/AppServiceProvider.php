@@ -3,7 +3,9 @@
 namespace App\Providers;
 
 use App\Models\SystemConfig;
+use App\View\Composers\NavigationComposer;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\View;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -22,6 +24,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->applyConfiguredSessionLifetime();
+
+        View::composer('layouts.app', NavigationComposer::class);
     }
 
     // BR-32 — session.lifetime is a storage-level backstop behind

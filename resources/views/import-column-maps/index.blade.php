@@ -1,58 +1,66 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>Register column mapping — {{ config('app.name') }}</title>
-</head>
-<body>
-    <p><a href="{{ route('organization.edit') }}">&larr; Organization profile</a></p>
+@extends('layouts.app')
 
-    <h1>Register column mapping (CANONICAL)</h1>
-    <p><small>AD-17, BR-41 — binds the fields RegisterImportService reads to the accounting office's register header strings. The active version with the highest number is the one applied at import.</small></p>
+@section('title', 'Register column mapping')
+@section('heading', 'Register column mapping')
 
-    @if (session('status'))
-        <p role="status">{{ session('status') }}</p>
-    @endif
+@section('content')
+    <x-page-header title="Register column mapping (CANONICAL)">
+        <x-slot:actions>
+            <a href="{{ route('import-column-maps.create') }}" class="btn btn-primary">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
+                    <path d="M12 5v14M5 12h14"/>
+                </svg>
+                Publish a new version
+            </a>
+        </x-slot:actions>
+    </x-page-header>
 
-    <p><a href="{{ route('import-column-maps.create') }}">Publish a new version</a></p>
+    <x-org-tabs current="mapping" />
 
-    <table border="1" cellpadding="4">
-        <thead>
-            <tr>
-                <th>Version</th>
-                <th>Effective from</th>
-                <th>Effective to</th>
-                <th>Status</th>
-                <th>Bindings</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-            @forelse ($versions as $version)
-                <tr>
-                    <td>{{ $version->version_no }}</td>
-                    <td>{{ $version->effective_from->toDateString() }}</td>
-                    <td>{{ $version->effective_to?->toDateString() ?? '—' }}</td>
-                    <td>{{ $version->is_active ? 'Active' : 'Retired' }}</td>
-                    <td><pre>{{ json_encode($version->column_bindings, JSON_PRETTY_PRINT) }}</pre></td>
-                    <td>
-                        @if ($version->is_active)
-                            <form method="POST" action="{{ route('import-column-maps.deactivate', $version) }}" style="display:inline">
-                                @csrf
-                                <button type="submit">Retire</button>
-                            </form>
-                        @else
-                            <form method="POST" action="{{ route('import-column-maps.reactivate', $version) }}" style="display:inline">
-                                @csrf
-                                <button type="submit">Reactivate</button>
-                            </form>
-                        @endif
-                    </td>
-                </tr>
-            @empty
-                <tr><td colspan="6">No versions yet.</td></tr>
-            @endforelse
-        </tbody>
-    </table>
-</body>
-</html>
+    <x-note>
+        AD-17, BR-41 — binds the fields RegisterImportService reads to the accounting office's register
+        header strings. The active version with the highest number is the one applied at import.
+    </x-note>
+
+    @forelse ($versions as $version)
+        <x-card :flush="true">
+            <div class="card-head">
+                <div class="flex flex-wrap items-center gap-3">
+                    <h2 class="card-title">Version {{ $version->version_no }}</h2>
+                    <x-status-badge :value="$version->is_active ? 'ACTIVE' : 'INACTIVE'"
+                                    :label="$version->is_active ? 'Active' : 'Retired'" />
+                    <span class="note tabular">
+                        Effective {{ $version->effective_from->toDateString() }}
+                        &rarr; {{ $version->effective_to?->toDateString() ?? 'open' }}
+                    </span>
+                </div>
+
+                @if ($version->is_active)
+                    <form method="POST" action="{{ route('import-column-maps.deactivate', $version) }}">
+                        @csrf
+                        <button type="submit" class="btn btn-danger btn-sm">Retire</button>
+                    </form>
+                @else
+                    <form method="POST" action="{{ route('import-column-maps.reactivate', $version) }}">
+                        @csrf
+                        <button type="submit" class="btn btn-secondary btn-sm">Reactivate</button>
+                    </form>
+                @endif
+            </div>
+
+            {{-- The bindings are JSON the administrator must be able to read
+                 exactly, so they stay verbatim in a scrollable mono block. --}}
+            <div class="card-body">
+                <p class="kv-label mb-1">Bindings</p>
+                <pre class="overflow-x-auto p-3 rounded-md bg-slate-50 border border-line font-mono text-[12px] leading-relaxed text-ink">{{ json_encode($version->column_bindings, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) }}</pre>
+            </div>
+        </x-card>
+    @empty
+        <x-card>
+            <p class="note">
+                No versions yet. A register cannot be imported until at least one mapping version is published.
+            </p>
+            <a href="{{ route('import-column-maps.create') }}" class="btn btn-primary mt-3">Publish the first version</a>
+        </x-card>
+    @endforelse
+@endsection

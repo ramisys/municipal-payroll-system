@@ -1,34 +1,39 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="utf-8">
-    <title>Deactivate employee — {{ config('app.name') }}</title>
-</head>
-<body>
-    <p><a href="{{ route('employees.index') }}">&larr; Employees</a></p>
+@extends('layouts.app')
 
-    <h1>Deactivate — {{ $employee->fullName() }} ({{ $employee->employee_no }})</h1>
+@section('title', 'Deactivate employee')
+@section('heading', 'Deactivate employee')
 
-    <p>The employee will be excluded from new payroll runs for periods after the separation date, but remains unchanged in every prior run and report (AC-1.1.4).</p>
+@section('content')
+    <x-page-header
+        title="Deactivate {{ $employee->fullName() }}"
+        subtitle="{{ $employee->employee_no }}"
+        :back="route('employees.index')" back-label="Employees" />
 
-    @if ($errors->any())
-        <ul role="alert">
-            @foreach ($errors->all() as $error)
-                <li>{{ $error }}</li>
-            @endforeach
-        </ul>
-    @endif
+    <div class="max-w-2xl space-y-4">
+        <x-alert type="warn" title="What deactivating does">
+            The employee will be excluded from new payroll runs for periods after the separation date,
+            but remains unchanged in every prior run and report (AC-1.1.4). The record is not deleted.
+        </x-alert>
 
-    <form method="POST" action="{{ route('employees.deactivate', $employee) }}">
-        @csrf
+        <x-card>
+            <form method="POST" action="{{ route('employees.deactivate', $employee) }}" class="space-y-4">
+                @csrf
 
-        <p><label for="separation_date">Separation date</label><br>
-        <input type="date" id="separation_date" name="separation_date" value="{{ old('separation_date') }}" required autofocus></p>
+                <x-field label="Separation date" name="separation_date" required>
+                    <input type="date" id="separation_date" name="separation_date" class="input"
+                           value="{{ old('separation_date') }}" required autofocus>
+                </x-field>
 
-        <p><label for="separation_reason">Separation reason</label><br>
-        <input type="text" id="separation_reason" name="separation_reason" value="{{ old('separation_reason') }}" required></p>
+                <x-field label="Separation reason" name="separation_reason" required>
+                    <input type="text" id="separation_reason" name="separation_reason" class="input"
+                           value="{{ old('separation_reason') }}" required>
+                </x-field>
 
-        <button type="submit">Deactivate employee</button>
-    </form>
-</body>
-</html>
+                <div class="flex items-center gap-2 pt-1">
+                    <button type="submit" class="btn btn-danger-solid">Deactivate employee</button>
+                    <a href="{{ route('employees.index') }}" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </x-card>
+    </div>
+@endsection

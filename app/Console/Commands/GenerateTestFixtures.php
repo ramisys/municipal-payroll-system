@@ -34,7 +34,162 @@ class GenerateTestFixtures extends Command
         $this->writeMalformedRegisterFixture("{$dir}/register_malformed_missing_column.xlsx");
         $this->info('Wrote tests/Fixtures/register_malformed_missing_column.xlsx');
 
+        // FRS §10 reconciliation-refusal suite (implementation-plan.md §7,
+        // W3): one seeded defect per register. The wrong-control-total case
+        // needs no fixture of its own — register_clean.xlsx plus a
+        // deliberately wrong $fileControlTotals argument covers it, since
+        // ReconciliationService takes control totals as a parameter rather
+        // than parsing them from the file (see ReconciliationService docblock).
+        $this->writeRowImbalanceRegisterFixture("{$dir}/register_defect_row_imbalance.xlsx");
+        $this->info('Wrote tests/Fixtures/register_defect_row_imbalance.xlsx');
+
+        $this->writeUnmatchedEmployeeRegisterFixture("{$dir}/register_defect_unmatched_employee.xlsx");
+        $this->info('Wrote tests/Fixtures/register_defect_unmatched_employee.xlsx');
+
+        $this->writeDuplicateEmployeeRegisterFixture("{$dir}/register_defect_duplicate_employee.xlsx");
+        $this->info('Wrote tests/Fixtures/register_defect_duplicate_employee.xlsx');
+
+        $this->writeOmittedEmployeeRegisterFixture("{$dir}/register_defect_omitted_employee.xlsx");
+        $this->info('Wrote tests/Fixtures/register_defect_omitted_employee.xlsx');
+
         return self::SUCCESS;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function canonicalHeaders(): array
+    {
+        return [
+            'Employee No.', 'Basic Pay', 'Overtime Pay', 'Night Shift Differential',
+            'Holiday Pay', 'Representation and Transportation Allowance', '13th Month Pay',
+            'SSS Contribution', 'PhilHealth Contribution', 'Pag-IBIG Contribution',
+            'Withholding Tax', 'Loan Amortization', 'Other Deduction',
+            'SSS ER Share', 'PhilHealth ER Share', 'Pag-IBIG ER Share',
+            'Gross Pay', 'Total Deductions', 'Net Pay',
+        ];
+    }
+
+    /**
+     * Writes one register file from an array of data rows, in the
+     * canonical column order — the same layout writeCleanRegisterFixture
+     * uses, factored out so each seeded-defect fixture below is just its
+     * row data.
+     *
+     * @param  array<int, array<int, string>>  $rows
+     */
+    private function writeRegisterFile(string $path, array $rows): void
+    {
+        $headers = $this->canonicalHeaders();
+
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Register');
+
+        foreach ($headers as $col => $header) {
+            $sheet->setCellValue([$col + 1, 1], $header);
+        }
+
+        $moneyColumns = range(2, count($headers));
+
+        foreach ($rows as $rowIndex => $row) {
+            $excelRow = $rowIndex + 2;
+            foreach ($row as $col => $value) {
+                $excelCol = $col + 1;
+                if (in_array($excelCol, $moneyColumns, true)) {
+                    $sheet->setCellValueExplicit([$excelCol, $excelRow], (float) $value, DataType::TYPE_NUMERIC);
+                } else {
+                    $sheet->setCellValue([$excelCol, $excelRow], $value);
+                }
+            }
+        }
+
+        $lastRow = count($rows) + 1;
+        foreach ($moneyColumns as $col) {
+            $letter = Coordinate::stringFromColumnIndex($col);
+            $sheet->getStyle("{$letter}2:{$letter}{$lastRow}")->getNumberFormat()->setFormatCode('0.00');
+        }
+
+        (new Xlsx($spreadsheet))->save($path);
+    }
+
+    /**
+     * The three clean rows of writeCleanRegisterFixture, available to the
+     * seeded-defect fixtures below so each can start from arithmetic that
+     * reconciles and introduce exactly one defect.
+     *
+     * @return array<int, array<int, string>>
+     */
+    private function cleanRows(): array
+    {
+        return [
+            ['E-0001', '20000.00', '1500.50', '300.25', '0.00', '2000.00', '0.00',
+                '900.00', '500.00', '100.00', '1200.35', '0.00', '0.00',
+                '1800.00', '500.00', '100.00', '23800.75', '2700.35', '21100.40'],
+            ['E-0002', '18000.00', '0.00', '0.00', '692.31', '2000.00', '0.00',
+                '810.00', '450.00', '100.00', '950.10', '500.00', '0.00',
+                '1620.00', '450.00', '100.00', '20692.31', '2810.10', '17882.21'],
+            ['E-0003', '25000.00', '2250.75', '450.00', '0.00', '2000.00', '25000.00',
+                '1125.00', '625.00', '100.00', '3200.55', '0.00', '250.00',
+                '2250.00', '625.00', '100.00', '54700.75', '5300.55', '49400.20'],
+        ];
+    }
+
+    /**
+     * AC-2.9.1/AC-2.9.2 fixture: E-0002's Net Pay is one centavo off
+     * (17882.22 instead of 17882.21). Gross pay and total deductions are
+     * untouched, so this isolates the row-arithmetic check alone.
+     */
+    private function writeRowImbalanceRegisterFixture(string $path): void
+    {
+        $rows = $this->cleanRows();
+        $rows[1][18] = '17882.22';
+
+        $this->writeRegisterFile($path, $rows);
+    }
+
+    /**
+     * AC-2.9.4 fixture: the three clean, matching rows plus a fourth row
+     * for 'E-9999', an employee number outside the run's population. Row
+     * arithmetic on the extra row is itself correct, so this isolates the
+     * unmatched-employee check alone — no row is omitted, since all three
+     * population members still appear.
+     */
+    private function writeUnmatchedEmployeeRegisterFixture(string $path): void
+    {
+        $rows = $this->cleanRows();
+        $extra = $rows[0];
+        $extra[0] = 'E-9999';
+        $rows[] = $extra;
+
+        $this->writeRegisterFile($path, $rows);
+    }
+
+    /**
+     * BR-38 fixture: the three clean rows plus a second row for 'E-0002',
+     * each arithmetically valid on its own. Isolates the duplicate-row
+     * check alone — every population member still appears at least once,
+     * and no row's arithmetic is wrong.
+     */
+    private function writeDuplicateEmployeeRegisterFixture(string $path): void
+    {
+        $rows = $this->cleanRows();
+        $rows[] = $rows[1];
+
+        $this->writeRegisterFile($path, $rows);
+    }
+
+    /**
+     * AC-2.9.5 fixture: only E-0001 and E-0002 appear. E-0003, an active
+     * employee in the run's population, is omitted entirely. Isolates the
+     * completeness check alone — the two rows present are both correctly
+     * matched and arithmetically valid.
+     */
+    private function writeOmittedEmployeeRegisterFixture(string $path): void
+    {
+        $rows = array_slice($this->cleanRows(), 0, 2);
+
+        $this->writeRegisterFile($path, $rows);
     }
 
     /**

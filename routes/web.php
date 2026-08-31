@@ -1,7 +1,10 @@
 <?php
 
+use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\Auth\PasswordChangeController;
 use App\Http\Controllers\Auth\SessionController;
+use App\Http\Controllers\UserController;
+use App\Services\AuthorizationService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -26,7 +29,30 @@ Route::middleware(['auth', 'session.idle', 'password.changed'])->group(function 
 
     // Placeholder landing view (UC-01 main flow step 6). Per-role module
     // screens don't exist yet — M2 onward is a later week.
-    Route::get('/dashboard', function () {
-        return view('dashboard', ['user' => Auth::user()]);
+    Route::get('/dashboard', function (AuthorizationService $authorizationService) {
+        $user = Auth::user();
+
+        return view('dashboard', [
+            'user' => $user,
+            'canManageUsers' => $authorizationService->can($user, 'users.manage'),
+            'canViewAuditLog' => $authorizationService->can($user, 'audit_log.view'),
+        ]);
     })->name('dashboard');
+
+    // UC-02 — Administrator only (AuthorizationService::authorize enforces
+    // this inside every UserController action; the route list itself
+    // grants nothing).
+    Route::get('/users', [UserController::class, 'index'])->name('users.index');
+    Route::get('/users/create', [UserController::class, 'create'])->name('users.create');
+    Route::post('/users', [UserController::class, 'store'])->name('users.store');
+    Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
+    Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
+    Route::post('/users/{user}/deactivate', [UserController::class, 'deactivate'])->name('users.deactivate');
+    Route::post('/users/{user}/reactivate', [UserController::class, 'reactivate'])->name('users.reactivate');
+    Route::post('/users/{user}/unlock', [UserController::class, 'unlock'])->name('users.unlock');
+    Route::post('/users/{user}/reset-password', [UserController::class, 'resetPassword'])->name('users.reset-password');
+
+    // UC-06 — Approver, Administrator, Viewer (AuthorizationService
+    // enforces; not the Payroll Officer, per the FR-6.2 matrix).
+    Route::get('/audit-log', [AuditLogController::class, 'index'])->name('audit-log.index');
 });

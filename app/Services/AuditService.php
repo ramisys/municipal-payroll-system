@@ -70,6 +70,49 @@ class AuditService
     }
 
     /**
+     * AC-6.1.5, UC-06 — walks every row in insertion order, checking both
+     * that each row's prev_entry_hash equals its predecessor's entry_hash
+     * (the link) and that its own entry_hash still matches its content
+     * (BR-35's tamper detection). Stops at the first break, since
+     * everything after an already-broken link tells the reader nothing
+     * new about where the chain first went wrong.
+     *
+     * @return array{intact: bool, broken_at: ?int, checked: int}
+     */
+    public function verifyChain(): array
+    {
+        $previousHash = null;
+        $checked = 0;
+
+        foreach (AuditLog::query()->orderBy('audit_log_id')->cursor() as $row) {
+            $checked++;
+
+            if ($row->prev_entry_hash !== $previousHash) {
+                return ['intact' => false, 'broken_at' => $row->audit_log_id, 'checked' => $checked];
+            }
+
+            $expectedHash = $this->computeHash(
+                userId: $row->user_id,
+                occurredAt: $row->occurred_at->format('Y-m-d H:i:s'),
+                entityName: $row->entity_name,
+                entityId: $row->entity_id,
+                action: $row->action,
+                previousValuesJson: $row->previous_values,
+                newValuesJson: $row->new_values,
+                prevEntryHash: $row->prev_entry_hash,
+            );
+
+            if ($expectedHash !== $row->entry_hash) {
+                return ['intact' => false, 'broken_at' => $row->audit_log_id, 'checked' => $checked];
+            }
+
+            $previousHash = $row->entry_hash;
+        }
+
+        return ['intact' => true, 'broken_at' => null, 'checked' => $checked];
+    }
+
+    /**
      * Recompute the hash a stored row *should* carry, from its own
      * content and its recorded predecessor link — used both when writing
      * a new row and when verifying an existing one (AC-6.1.5).

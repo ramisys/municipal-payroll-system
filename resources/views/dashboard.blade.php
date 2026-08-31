@@ -13,7 +13,18 @@
         <p>{{ session('status') }}</p>
     @endif
 
-    <p><em>Per-role module screens are not built yet — this is the pre-oral W2 milestone landing view.</em></p>
+    <nav>
+        <ul>
+            @if ($canManageUsers)
+                <li><a href="{{ route('users.index') }}">Manage users</a></li>
+            @endif
+            @if ($canViewAuditLog)
+                <li><a href="{{ route('audit-log.index') }}">Audit log</a></li>
+            @endif
+        </ul>
+    </nav>
+
+    <p><em>Remaining per-role module screens are not built yet — this is the pre-oral W3 milestone landing view.</em></p>
 
     <form method="POST" action="{{ route('logout') }}">
         @csrf

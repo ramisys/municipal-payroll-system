@@ -18,11 +18,13 @@ class DatabaseSeeder extends Seeder
             EarningTypeSeeder::class,
             DeductionTypeSeeder::class,
             LeaveTypeSeeder::class,
+            AttendanceTypeSeeder::class,
             HolidaySeeder::class,
             SystemConfigSeeder::class,
             RoleSeeder::class,
             ImportColumnMapSeeder::class,
             UserSeeder::class,
+            EmployeeDemoSeeder::class,
         ]);
     }
 }

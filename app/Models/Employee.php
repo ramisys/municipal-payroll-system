@@ -68,6 +68,30 @@ class Employee extends Model
             ->latest('effective_from');
     }
 
+    /**
+     * @return HasMany<CompensationProfile, $this>
+     */
+    public function compensationProfiles(): HasMany
+    {
+        return $this->hasMany(CompensationProfile::class, 'employee_id', 'employee_id');
+    }
+
+    /**
+     * @return HasMany<RecurringEarning, $this>
+     */
+    public function recurringEarnings(): HasMany
+    {
+        return $this->hasMany(RecurringEarning::class, 'employee_id', 'employee_id');
+    }
+
+    /**
+     * @return HasMany<RecurringDeduction, $this>
+     */
+    public function recurringDeductions(): HasMany
+    {
+        return $this->hasMany(RecurringDeduction::class, 'employee_id', 'employee_id');
+    }
+
     public function fullName(): string
     {
         $middle = $this->middle_name !== null && $this->middle_name !== '' ? " {$this->middle_name} " : ' ';

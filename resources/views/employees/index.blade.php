@@ -60,6 +60,7 @@
                     <td>{{ $employee->is_active ? 'Active' : 'Deactivated' }}</td>
                     <td>
                         <a href="{{ route('employees.edit', $employee) }}">Edit</a>
+                        <a href="{{ route('employees.compensation.index', $employee) }}">Compensation</a>
                         @if ($employee->is_active)
                             <a href="{{ route('employees.deactivate-form', $employee) }}">Deactivate</a>
                         @else

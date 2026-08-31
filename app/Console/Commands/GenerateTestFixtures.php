@@ -52,6 +52,17 @@ class GenerateTestFixtures extends Command
         $this->writeOmittedEmployeeRegisterFixture("{$dir}/register_defect_omitted_employee.xlsx");
         $this->info('Wrote tests/Fixtures/register_defect_omitted_employee.xlsx');
 
+        // W6 (pre-oral-demonstration-plan.md §6 Table 6): AttendanceImportService
+        // fixtures. Employee numbers here (E-0001..E-0003) are the same
+        // scheme AttendanceImportServiceTest creates via Employee::factory,
+        // not the seeded 30-employee demo population (EmployeeDemoSeeder
+        // uses E-1000.. to keep the two apart).
+        $this->writeAttendanceCleanFixture("{$dir}/attendance_clean.xlsx");
+        $this->info('Wrote tests/Fixtures/attendance_clean.xlsx');
+
+        $this->writeAttendanceOneBadRowFixture("{$dir}/attendance_one_bad_row.xlsx");
+        $this->info('Wrote tests/Fixtures/attendance_one_bad_row.xlsx');
+
         return self::SUCCESS;
     }
 
@@ -334,6 +345,70 @@ class GenerateTestFixtures extends Command
             $letter = Coordinate::stringFromColumnIndex($col);
             $sheet->getStyle("{$letter}2:{$letter}{$lastRow}")
                 ->getNumberFormat()->setFormatCode('0.00');
+        }
+
+        (new Xlsx($spreadsheet))->save($path);
+    }
+
+    /**
+     * Three clean rows across two employees, both within a 2026-01-01 to
+     * 2026-01-15 cut-off — the period AttendanceImportServiceTest generates
+     * to match. Times are chosen to exercise BR-03/BR-04 derivation: an
+     * on-time day, a late day, and an overtime day. (Punches are kept
+     * within a single calendar day deliberately — the service parses
+     * "Time In"/"Time Out" without a date component, so a shift crossing
+     * midnight would need a same-day time_out and is out of scope here.)
+     */
+    private function writeAttendanceCleanFixture(string $path): void
+    {
+        $rows = [
+            ['E-0001', '2026-01-05', '08:00', '17:00'],
+            ['E-0001', '2026-01-06', '08:15', '19:00'],
+            ['E-0002', '2026-01-05', '08:00', '20:00'],
+        ];
+
+        $this->writeAttendanceFile($path, $rows);
+    }
+
+    /**
+     * AC-1.3.2 fixture: the clean rows plus a fourth row for an employee
+     * number not on file — isolates the single-bad-row case the
+     * demonstration's beat 6 exercises (§7 Table, "Import an attendance
+     * file with one bad row").
+     */
+    private function writeAttendanceOneBadRowFixture(string $path): void
+    {
+        $rows = [
+            ['E-0001', '2026-01-05', '08:00', '17:00'],
+            ['E-0001', '2026-01-06', '08:15', '19:00'],
+            ['E-0002', '2026-01-05', '08:00', '20:00'],
+            ['E-9999', '2026-01-05', '08:00', '17:00'],
+        ];
+
+        $this->writeAttendanceFile($path, $rows);
+    }
+
+    /**
+     * @param  array<int, array{0: string, 1: string, 2: string, 3: string}>  $rows
+     */
+    private function writeAttendanceFile(string $path, array $rows): void
+    {
+        $headers = ['Employee No', 'Date', 'Time In', 'Time Out'];
+
+        $spreadsheet = new Spreadsheet;
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Attendance');
+
+        foreach ($headers as $col => $header) {
+            $sheet->setCellValue([$col + 1, 1], $header);
+        }
+
+        foreach ($rows as $rowIndex => $row) {
+            $excelRow = $rowIndex + 2;
+            $sheet->setCellValue([1, $excelRow], $row[0]);
+            $sheet->setCellValueExplicit([2, $excelRow], $row[1], DataType::TYPE_STRING);
+            $sheet->setCellValueExplicit([3, $excelRow], $row[2], DataType::TYPE_STRING);
+            $sheet->setCellValueExplicit([4, $excelRow], $row[3], DataType::TYPE_STRING);
         }
 
         (new Xlsx($spreadsheet))->save($path);

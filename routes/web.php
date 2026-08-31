@@ -1,8 +1,10 @@
 <?php
 
+use App\Http\Controllers\AttendanceImportController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\Auth\PasswordChangeController;
 use App\Http\Controllers\Auth\SessionController;
+use App\Http\Controllers\CompensationProfileController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\ImportColumnMapController;
 use App\Http\Controllers\OrganizationProfileController;
@@ -42,6 +44,7 @@ Route::middleware(['auth', 'session.idle', 'password.changed'])->group(function 
             'canManageUsers' => $authorizationService->can($user, 'users.manage'),
             'canViewAuditLog' => $authorizationService->can($user, 'audit_log.view'),
             'canManageOrganization' => $authorizationService->can($user, 'organization.manage'),
+            'canImportAttendance' => $authorizationService->can($user, 'attendance.import'),
         ]);
     })->name('dashboard');
 
@@ -97,6 +100,20 @@ Route::middleware(['auth', 'session.idle', 'password.changed'])->group(function 
     Route::post('/employees/{employee}/deactivate', [EmployeeController::class, 'deactivate'])->name('employees.deactivate');
     Route::get('/employees/{employee}/reactivate', [EmployeeController::class, 'reactivateForm'])->name('employees.reactivate-form');
     Route::post('/employees/{employee}/reactivate', [EmployeeController::class, 'reactivate'])->name('employees.reactivate');
+
+    // UC-11 — Payroll Officer, Administrator ('employees.manage').
+    Route::get('/employees/{employee}/compensation', [CompensationProfileController::class, 'index'])->name('employees.compensation.index');
+    Route::post('/employees/{employee}/compensation', [CompensationProfileController::class, 'store'])->name('employees.compensation.store');
+    Route::post('/employees/{employee}/compensation/recurring-earnings', [CompensationProfileController::class, 'storeEarning'])->name('employees.compensation.recurring-earnings.store');
+    Route::post('/employees/{employee}/compensation/recurring-earnings/{recurringEarning}/end', [CompensationProfileController::class, 'endEarning'])->name('employees.compensation.recurring-earnings.end');
+    Route::post('/employees/{employee}/compensation/recurring-deductions', [CompensationProfileController::class, 'storeDeduction'])->name('employees.compensation.recurring-deductions.store');
+    Route::post('/employees/{employee}/compensation/recurring-deductions/{recurringDeduction}/end', [CompensationProfileController::class, 'endDeduction'])->name('employees.compensation.recurring-deductions.end');
+
+    // UC-13 — Payroll Officer only ('attendance.import').
+    Route::get('/attendance-import', [AttendanceImportController::class, 'create'])->name('attendance-import.create');
+    Route::post('/attendance-import/preview', [AttendanceImportController::class, 'preview'])->name('attendance-import.preview');
+    Route::post('/attendance-import/commit', [AttendanceImportController::class, 'commit'])->name('attendance-import.commit');
+    Route::post('/attendance-import/cancel', [AttendanceImportController::class, 'cancel'])->name('attendance-import.cancel');
 
     // UC-04 mapping editor — AD-17, BR-41. Administrator only.
     Route::get('/import-column-maps', [ImportColumnMapController::class, 'index'])->name('import-column-maps.index');

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\AttendanceType;
 use App\Models\DeductionType;
 use App\Models\Department;
 use App\Models\EarningType;
@@ -20,13 +21,19 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 // UC-04 · Maintain reference data — FR-0.4, BR-12, BR-25, BR-33.
 // Administrator only ('reference_data.manage').
 //
-// One controller for all six lists (departments, positions, employment
-// statuses, earning types, deduction types, leave types) because UC-04 is
-// itself one use case whose first step is "select a reference list" —
-// six near-identical controllers would just be six copies of the same
-// deactivate/in-use-guard logic (AC-0.4.1, AC-0.4.2). $type is the route
-// segment naming which list; listConfig() is the only place that knows
+// One controller for all seven lists (departments, positions, employment
+// statuses, earning types, deduction types, leave types, attendance types)
+// because UC-04 is itself one use case whose first step is "select a
+// reference list" — near-identical controllers would just be copies of the
+// same deactivate/in-use-guard logic (AC-0.4.1, AC-0.4.2). $type is the
+// route segment naming which list; config() is the only place that knows
 // how each list differs.
+//
+// Attendance types are carried here even though FR-0.4's own behavior text
+// names only the first six — data-model.md §7 lists ATTENDANCE_TYPE among
+// "entities added beyond the FRS §8.1 inventory... for the maintained
+// reference lists," so a seventh $type is the documented home for it,
+// not scope creep.
 class ReferenceDataController extends Controller
 {
     public function __construct(
@@ -236,6 +243,20 @@ class ReferenceDataController extends Controller
                     ['field' => 'carryover_rule', 'label' => 'Carry-over rule', 'type' => 'text'],
                 ],
             ],
+            'attendance-types' => [
+                'model' => AttendanceType::class,
+                'label' => 'Attendance type',
+                'entity_name' => 'ATTENDANCE_TYPE',
+                'name_column' => 'attendance_name',
+                'table' => 'attendance_types',
+                'key' => 'attendance_type_id',
+                'columns' => [
+                    ['field' => 'attendance_code', 'label' => 'Code', 'type' => 'text'],
+                    ['field' => 'attendance_name', 'label' => 'Name', 'type' => 'text'],
+                    ['field' => 'counts_as_worked', 'label' => 'Counts as worked', 'type' => 'boolean_required'],
+                    ['field' => 'requires_punches', 'label' => 'Requires punches', 'type' => 'boolean_required'],
+                ],
+            ],
         ];
 
         if (! isset($configs[$type])) {
@@ -288,6 +309,12 @@ class ReferenceDataController extends Controller
                 'excludes_rest_days' => ['sometimes', 'boolean'],
                 'carryover_rule' => ['nullable', 'string', 'max:255'],
             ],
+            'attendance-types' => [
+                'attendance_code' => ['required', 'string', 'max:50', Rule::unique('attendance_types', 'attendance_code')->ignore($ignoreId, 'attendance_type_id')],
+                'attendance_name' => ['required', 'string', 'max:255'],
+                'counts_as_worked' => ['required', 'boolean'],
+                'requires_punches' => ['required', 'boolean'],
+            ],
             default => throw new NotFoundHttpException("Unknown reference list '{$type}'."),
         };
     }
@@ -309,6 +336,7 @@ class ReferenceDataController extends Controller
             'earning-types' => ['is_taxable', 'is_thirteenth_month_base', 'is_recurring_allowed'],
             'deduction-types' => ['is_statutory', 'participates_in_floor_check'],
             'leave-types' => ['is_paid', 'allows_negative_balance', 'excludes_rest_days'],
+            'attendance-types' => ['counts_as_worked', 'requires_punches'],
             default => [],
         };
 

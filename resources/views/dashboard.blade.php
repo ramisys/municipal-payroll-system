@@ -18,6 +18,9 @@
             @if ($canManageEmployees)
                 <li><a href="{{ route('employees.index') }}">Employees</a></li>
             @endif
+            @if ($canImportAttendance)
+                <li><a href="{{ route('attendance-import.create') }}">Import attendance</a></li>
+            @endif
             @if ($canManageUsers)
                 <li><a href="{{ route('users.index') }}">Manage users</a></li>
             @endif

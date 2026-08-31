@@ -7,6 +7,8 @@ use App\Models\Employee;
 use App\Models\EmploymentDetail;
 use App\Models\EmploymentStatus;
 use App\Models\Position;
+use App\Models\SystemConfig;
+use App\Models\WorkSchedule;
 use App\Services\AuditService;
 use App\Services\AuthorizationService;
 use App\Services\ValidationService;
@@ -131,6 +133,8 @@ class EmployeeController extends Controller
                 'updated_by' => $request->user()->user_id,
             ]);
 
+            $this->openDefaultWorkSchedule($employee, $data['date_hired'], $request->user()->user_id);
+
             $this->auditService->record(
                 user: $request->user(),
                 entityName: 'EMPLOYEE',
@@ -143,6 +147,31 @@ class EmployeeController extends Controller
         });
 
         return redirect()->route('employees.edit', $employee)->with('status', "Employee '{$employee->employee_no}' registered.");
+    }
+
+    // No use case in use-case-model.md maintains WORK_SCHEDULE directly
+    // (see the WorkSchedule model comment); it is a prerequisite input for
+    // AttendanceImportService's BR-03/BR-04 derivation, so registration
+    // opens a documented-default schedule — SYSTEM_CONFIG's org-wide
+    // STANDARD_HOURS_PER_DAY, a fixed 8-to-5 shift, weekends off — an
+    // AD-17-style default the Payroll Officer edits later if the
+    // employee's actual shift differs (E1's overlap check on
+    // CompensationProfileService covers a future dated correction the
+    // same way BR-08 does for pay).
+    private function openDefaultWorkSchedule(Employee $employee, string $effectiveFrom, ?int $actorUserId): void
+    {
+        WorkSchedule::create([
+            'employee_id' => $employee->employee_id,
+            'standard_hours_per_day' => SystemConfig::value('STANDARD_HOURS_PER_DAY', '8.00'),
+            'rest_days' => 'SAT,SUN',
+            'scheduled_time_in' => '08:00:00',
+            'scheduled_time_out' => '17:00:00',
+            'unpaid_break_hours' => '1.00',
+            'effective_from' => $effectiveFrom,
+            'effective_to' => null,
+            'created_by' => $actorUserId,
+            'updated_by' => $actorUserId,
+        ]);
     }
 
     public function edit(Request $request, Employee $employee): View

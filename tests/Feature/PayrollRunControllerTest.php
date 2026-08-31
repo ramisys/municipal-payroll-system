@@ -112,11 +112,52 @@ class PayrollRunControllerTest extends TestCase
         self::assertSame('CANCELLED', $run->refresh()->run_status);
     }
 
+    // W8 demo polish — empty states (pre-oral-demonstration-plan.md §6
+    // Table 6, W8 Track C).
+    public function test_the_index_and_create_screens_render_with_nothing_defined_yet(): void
+    {
+        $officer = $this->officer();
+
+        $this->actingAs($officer)->get('/payroll-runs')->assertOk()->assertSee('No payroll runs yet');
+        $this->actingAs($officer)->get('/payroll-runs/create')->assertOk()->assertSee('No pay periods are defined yet');
+    }
+
     // AC-6.2.4 — an Administrator cannot create a payroll run.
     public function test_an_administrator_cannot_create_a_payroll_run(): void
     {
         $admin = User::factory()->forRole('ADMINISTRATOR')->create();
 
         $this->actingAs($admin)->get('/payroll-runs/create')->assertForbidden();
+    }
+
+    // ✧ UC-33 step 1 — "User opens a payroll run" is shared by every
+    // review-history actor (Payroll Officer, Approver, Administrator,
+    // Viewer), so a Viewer can read the run's own screen even though it
+    // cannot create, import into, or cancel one (AC-6.2.5's "outputs of
+    // payroll, not its inputs" applies here: a run and its figures are an
+    // output, unlike the create/cancel/import actions).
+    public function test_a_viewer_can_open_the_run_screen_but_sees_no_write_actions(): void
+    {
+        Employee::factory()->create(['employee_no' => 'E-0001', 'is_active' => true]);
+        $period = $this->period();
+        $officer = $this->officer();
+        $this->actingAs($officer)->post('/payroll-runs', [
+            'payroll_period_id' => $period->payroll_period_id,
+            'run_type' => 'REGULAR',
+            'scope' => 'ALL',
+        ]);
+        $run = PayrollRun::query()->firstOrFail();
+
+        $viewer = User::factory()->forRole('VIEWER')->create();
+
+        $this->actingAs($viewer)->get('/payroll-runs')->assertOk();
+        $response = $this->actingAs($viewer)->get(route('payroll-runs.show', $run));
+        $response->assertOk();
+        $response->assertDontSee('Cancel this run');
+        $response->assertDontSee('Import computed register');
+
+        // The write routes themselves stay refused even though the
+        // screen is now readable.
+        $this->actingAs($viewer)->get(route('payroll-runs.cancel-form', $run))->assertForbidden();
     }
 }

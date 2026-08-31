@@ -65,6 +65,7 @@ class PayrollImportController extends Controller
         ]);
 
         $map = ImportColumnMap::query()->findOrFail($data['import_column_map_id']);
+        $originalFilename = $request->file('file')->getClientOriginalName();
         $storedPath = $request->file('file')->store('register-imports', 'local');
         $absolutePath = Storage::disk('local')->path($storedPath);
 
@@ -76,8 +77,14 @@ class PayrollImportController extends Controller
             return back()->withErrors(['file' => "E1: {$e->getMessage()}"])->withInput();
         }
 
+        // store('register-imports', 'local') saves under a random storage
+        // name (Laravel's default hashName()), never the officer's own
+        // filename — the original name is stashed separately so UC-18
+        // step 7/UC-33 can name the file the register actually was, not
+        // the path it happened to land at on disk.
         $request->session()->put(self::SESSION_KEY, [
             'path' => $storedPath,
+            'original_filename' => $originalFilename,
             'payroll_run_id' => $payrollRun->payroll_run_id,
             'import_column_map_id' => $map->import_column_map_id,
         ]);
@@ -105,7 +112,7 @@ class PayrollImportController extends Controller
         $absolutePath = Storage::disk('local')->path($pending['path']);
 
         try {
-            $committed = $this->payrollImportService->commit($payrollRun, $absolutePath, $map, $request->user()->user_id);
+            $committed = $this->payrollImportService->commit($payrollRun, $absolutePath, $pending['original_filename'], $map, $request->user()->user_id);
         } catch (RegisterParseException $e) {
             return back()->withErrors(['file' => "E1: {$e->getMessage()}"]);
         } catch (ReconciliationException $e) {

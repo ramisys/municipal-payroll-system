@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Department;
+use App\Models\PayrollImport;
 use App\Models\PayrollPeriod;
 use App\Models\PayrollRun;
 use App\Services\AuditService;
@@ -17,9 +18,16 @@ use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 
-// UC-17 · Create payroll run — FR-2.6, FR-4.4 (A2 cancel). Payroll Officer
+// UC-17 · Create payroll run — FR-2.6, FR-4.4 (A2 cancel). Creating,
+// cancelling, and exporting a run's worksheet (UC-32) are Payroll Officer
 // only ('payroll_run.create_import', RoleSeeder's comment: "FR-2.6, FR-2.8
-// — PO"; AC-6.2.4 forbids the Administrator this function).
+// — PO"; AC-6.2.4 forbids the Administrator these functions) — but
+// *viewing* a run is not: UC-33 step 1 has the Payroll Officer, Approver,
+// Administrator, and Viewer alike "open a payroll run" on the way to its
+// import history, so index()/show() are gated on 'payroll_records.search'
+// (the same broad-read key PayrollImportController's history/show/download
+// use), and the write-action links on the run's own screen are hidden from
+// a viewer who only holds that broader grant (see $canManage below).
 //
 // exportWorksheet() carries UC-32, included by UC-17 (a run is created and
 // its input worksheet exported "in the same operation" — use-case-model.md
@@ -36,7 +44,7 @@ class PayrollRunController extends Controller
 
     public function index(Request $request): View
     {
-        $this->authorizationService->authorize($request->user(), 'payroll_run.create_import');
+        $this->authorizationService->authorize($request->user(), 'payroll_records.search');
 
         $runs = PayrollRun::query()
             ->with('period')
@@ -103,7 +111,7 @@ class PayrollRunController extends Controller
 
     public function show(Request $request, PayrollRun $payrollRun): View
     {
-        $this->authorizationService->authorize($request->user(), 'payroll_run.create_import');
+        $this->authorizationService->authorize($request->user(), 'payroll_records.search');
 
         $payrollRun->load(['period', 'lines.employee']);
         $currentImport = $payrollRun->currentImport();
@@ -111,7 +119,8 @@ class PayrollRunController extends Controller
         return view('payroll-runs.show', [
             'run' => $payrollRun,
             'currentImport' => $currentImport,
-            'totals' => $this->derivedTotals($payrollRun),
+            'totals' => $this->derivedTotals($payrollRun, $currentImport),
+            'canManage' => $this->authorizationService->can($request->user(), 'payroll_run.create_import'),
         ]);
     }
 
@@ -181,9 +190,9 @@ class PayrollRunController extends Controller
      *
      * @return array{gross: string, deductions: string, net: string}
      */
-    private function derivedTotals(PayrollRun $run): array
+    private function derivedTotals(PayrollRun $run, ?PayrollImport $currentImport): array
     {
-        $lines = $run->lines()->where('payroll_import_id', $run->currentImport()?->payroll_import_id)->get();
+        $lines = $run->lines()->where('payroll_import_id', $currentImport?->payroll_import_id)->get();
 
         $gross = '0.00';
         $deductions = '0.00';

@@ -24,7 +24,7 @@
             </tr>
         </thead>
         <tbody>
-            @foreach ($imports as $import)
+            @forelse ($imports as $import)
                 <tr>
                     <td>{{ $import->version_no }}</td>
                     <td>{{ $import->is_current ? 'Current' : 'Superseded' }}</td>
@@ -39,7 +39,11 @@
                         <a href="{{ route('payroll-imports.download', [$run, $import]) }}">Download</a>
                     </td>
                 </tr>
-            @endforeach
+            @empty
+                <tr>
+                    <td colspan="9">No register has been imported into this run yet (UC-18).</td>
+                </tr>
+            @endforelse
         </tbody>
     </table>
 </body>

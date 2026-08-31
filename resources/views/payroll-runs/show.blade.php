@@ -35,12 +35,14 @@
     </p>
 
     <ul>
-        <li><a href="{{ route('payroll-runs.worksheet', $run) }}">Export input worksheet (UC-32)</a></li>
-        @if (in_array($run->run_status, ['DRAFT', 'RETURNED'], true))
-            <li><a href="{{ route('payroll-imports.create', $run) }}">Import computed register (UC-18)</a></li>
+        @if ($canManage)
+            <li><a href="{{ route('payroll-runs.worksheet', $run) }}">Export input worksheet (UC-32)</a></li>
+            @if (in_array($run->run_status, ['DRAFT', 'RETURNED'], true))
+                <li><a href="{{ route('payroll-imports.create', $run) }}">Import computed register (UC-18)</a></li>
+            @endif
         @endif
         <li><a href="{{ route('payroll-imports.history', $run) }}">Import history (UC-33)</a></li>
-        @if ($run->run_status === 'DRAFT')
+        @if ($canManage && $run->run_status === 'DRAFT')
             <li><a href="{{ route('payroll-runs.cancel-form', $run) }}">Cancel this run</a></li>
         @endif
     </ul>

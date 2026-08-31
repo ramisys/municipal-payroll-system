@@ -28,7 +28,7 @@
             </tr>
         </thead>
         <tbody>
-            @foreach ($runs as $run)
+            @forelse ($runs as $run)
                 <tr>
                     <td>{{ $run->payroll_run_id }}</td>
                     <td>{{ $run->period->payroll_year }}-{{ $run->period->period_no }} ({{ $run->period->cutoff_start->toDateString() }} to {{ $run->period->cutoff_end->toDateString() }})</td>
@@ -38,7 +38,11 @@
                     <td>{{ $run->employee_count }}</td>
                     <td><a href="{{ route('payroll-runs.show', $run) }}">Open</a></td>
                 </tr>
-            @endforeach
+            @empty
+                <tr>
+                    <td colspan="7">No payroll runs yet — create one for a defined pay period (UC-17).</td>
+                </tr>
+            @endforelse
         </tbody>
     </table>
 </body>

@@ -77,7 +77,7 @@ class PayrollImportService
      *
      * @return array{import: PayrollImport, changed: array<int, string>, unchanged: array<int, string>}
      */
-    public function commit(PayrollRun $run, string $filePath, ImportColumnMap $map, ?int $actorUserId): array
+    public function commit(PayrollRun $run, string $filePath, string $originalFilename, ImportColumnMap $map, ?int $actorUserId): array
     {
         if (! in_array($run->run_status, ['DRAFT', 'RETURNED'], true)) {
             throw new PayrollImportException(
@@ -121,10 +121,18 @@ class PayrollImportService
         $deductionTypeIdByCode = DeductionType::query()->pluck('deduction_type_id', 'deduction_code');
 
         return DB::transaction(function () use (
-            $run, $map, $filePath, $rows, $result, $actorUserId,
+            $run, $map, $filePath, $originalFilename, $rows, $result, $actorUserId,
             $employeeIdByNo, $compensationProfileIdByEmployeeId,
             $earningTypeIdByCode, $isTaxableByCode, $deductionTypeIdByCode,
         ) {
+            // Serializes concurrent commits into the same run: without this
+            // lock, two overlapping requests could both read the same
+            // MAX(version_no) and both attempt to become the current
+            // version, colliding on uq_payroll_imports_run_current with a
+            // raw QueryException instead of the second one simply
+            // superseding the first's version as version_no+1.
+            PayrollRun::query()->where('payroll_run_id', $run->payroll_run_id)->lockForUpdate()->first();
+
             $nextVersion = (int) (PayrollImport::query()->where('payroll_run_id', $run->payroll_run_id)->max('version_no') ?? 0) + 1;
 
             PayrollImport::query()
@@ -136,7 +144,7 @@ class PayrollImportService
                 'payroll_run_id' => $run->payroll_run_id,
                 'import_column_map_id' => $map->import_column_map_id,
                 'version_no' => $nextVersion,
-                'source_filename' => basename($filePath),
+                'source_filename' => $originalFilename,
                 'source_sha256' => hash_file('sha256', $filePath),
                 'source_file' => file_get_contents($filePath),
                 'imported_by' => $actorUserId,

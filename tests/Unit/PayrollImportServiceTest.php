@@ -112,7 +112,7 @@ class PayrollImportServiceTest extends TestCase
         $actorId = $this->actorId();
         $run = $this->runInDraft($this->period(), $actorId);
 
-        $committed = $this->service()->commit($run, base_path('tests/Fixtures/register_clean.xlsx'), $this->canonicalMap(), $actorId);
+        $committed = $this->service()->commit($run, base_path('tests/Fixtures/register_clean.xlsx'), 'register_clean.xlsx', $this->canonicalMap(), $actorId);
 
         $import = $committed['import'];
         self::assertSame(1, $import->version_no);
@@ -135,7 +135,7 @@ class PayrollImportServiceTest extends TestCase
         $run = $this->runInDraft($this->period(), $this->actorId());
 
         try {
-            $this->service()->commit($run, base_path('tests/Fixtures/register_defect_row_imbalance.xlsx'), $this->canonicalMap(), $this->actorId());
+            $this->service()->commit($run, base_path('tests/Fixtures/register_defect_row_imbalance.xlsx'), 'register_defect_row_imbalance.xlsx', $this->canonicalMap(), $this->actorId());
             self::fail('Expected a ReconciliationException.');
         } catch (ReconciliationException $e) {
             self::assertNotEmpty($e->defects);
@@ -153,7 +153,7 @@ class PayrollImportServiceTest extends TestCase
         $this->expectException(RegisterParseException::class);
 
         try {
-            $this->service()->commit($run, base_path('tests/Fixtures/register_malformed_missing_column.xlsx'), $this->canonicalMap(), $this->actorId());
+            $this->service()->commit($run, base_path('tests/Fixtures/register_malformed_missing_column.xlsx'), 'register_malformed_missing_column.xlsx', $this->canonicalMap(), $this->actorId());
         } finally {
             self::assertSame(0, PayrollImport::query()->count());
         }
@@ -168,8 +168,8 @@ class PayrollImportServiceTest extends TestCase
         $actorId = $this->actorId();
         $run = $this->runInDraft($this->period(), $actorId);
 
-        $first = $this->service()->commit($run, base_path('tests/Fixtures/register_clean.xlsx'), $this->canonicalMap(), $actorId);
-        $second = $this->service()->commit($run, base_path('tests/Fixtures/register_clean.xlsx'), $this->canonicalMap(), $actorId);
+        $first = $this->service()->commit($run, base_path('tests/Fixtures/register_clean.xlsx'), 'register_clean.xlsx', $this->canonicalMap(), $actorId);
+        $second = $this->service()->commit($run, base_path('tests/Fixtures/register_clean.xlsx'), 'register_clean.xlsx', $this->canonicalMap(), $actorId);
 
         self::assertSame(2, $second['import']->version_no);
         self::assertTrue($second['import']->is_current);
@@ -194,7 +194,7 @@ class PayrollImportServiceTest extends TestCase
         $run->save();
 
         $this->expectException(PayrollImportException::class);
-        $this->service()->commit($run, base_path('tests/Fixtures/register_clean.xlsx'), $this->canonicalMap(), $this->actorId());
+        $this->service()->commit($run, base_path('tests/Fixtures/register_clean.xlsx'), 'register_clean.xlsx', $this->canonicalMap(), $this->actorId());
     }
 
     // A matched active employee with no compensation profile in force
@@ -207,7 +207,7 @@ class PayrollImportServiceTest extends TestCase
         $run = $this->runInDraft($this->period(), $this->actorId());
 
         try {
-            $this->service()->commit($run, base_path('tests/Fixtures/register_clean.xlsx'), $this->canonicalMap(), $this->actorId());
+            $this->service()->commit($run, base_path('tests/Fixtures/register_clean.xlsx'), 'register_clean.xlsx', $this->canonicalMap(), $this->actorId());
             self::fail('Expected a PayrollImportException.');
         } catch (PayrollImportException $e) {
             self::assertStringContainsString('E-0002', $e->getMessage());

@@ -17,6 +17,10 @@
         </ul>
     @endif
 
+    @if ($periods->isEmpty())
+        <p><em>No pay periods are defined yet (UC-17 E3). UC-03 — configuring the payroll calendar — is an Administrator function; ask an Administrator to generate it before a run can be created.</em></p>
+    @endif
+
     <form method="POST" action="{{ route('payroll-runs.store') }}">
         @csrf
 

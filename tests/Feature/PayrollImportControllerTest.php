@@ -107,6 +107,7 @@ class PayrollImportControllerTest extends TestCase
         $firstImport = PayrollImport::query()->where('payroll_run_id', $run->payroll_run_id)->firstOrFail();
         self::assertSame(1, $firstImport->version_no);
         self::assertTrue($firstImport->is_current);
+        self::assertSame('register_clean.xlsx', $firstImport->source_filename, 'the officer\'s own filename is recorded, not the randomized storage-disk name.');
         self::assertNotNull(AuditLog::query()->where('entity_name', 'PAYROLL_IMPORT')->where('entity_id', $firstImport->payroll_import_id)->first());
 
         // UC-18 A1 — a second accepted import supersedes the first.
@@ -170,5 +171,26 @@ class PayrollImportControllerTest extends TestCase
 
         $this->actingAs($viewer)->get("/payroll-runs/{$run->payroll_run_id}/imports")->assertOk();
         $this->actingAs($viewer)->get("/payroll-runs/{$run->payroll_run_id}/import")->assertForbidden();
+    }
+
+    // W8 demo polish — empty states (pre-oral-demonstration-plan.md §6
+    // Table 6, W8 Track C).
+    public function test_history_renders_before_any_import_exists(): void
+    {
+        $officer = $this->officer();
+        $run = $this->runWithMatchingPopulation($this->period(), $officer->user_id);
+
+        $this->actingAs($officer)->get("/payroll-runs/{$run->payroll_run_id}/imports")
+            ->assertOk()->assertSee('No register has been imported into this run yet');
+    }
+
+    public function test_the_import_form_reports_a_missing_column_mapping_without_a_dead_link(): void
+    {
+        ImportColumnMap::query()->update(['is_active' => false]);
+        $officer = $this->officer();
+        $run = $this->runWithMatchingPopulation($this->period(), $officer->user_id);
+
+        $this->actingAs($officer)->get("/payroll-runs/{$run->payroll_run_id}/import")
+            ->assertOk()->assertSee('No column mapping is defined yet');
     }
 }

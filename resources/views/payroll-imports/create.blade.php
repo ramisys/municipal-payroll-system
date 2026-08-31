@@ -19,6 +19,10 @@
         </ul>
     @endif
 
+    @if ($maps->isEmpty())
+        <p><em>No column mapping is defined yet (BR-41). Maintaining the register column mapping is an Administrator function; ask an Administrator to publish one before a register can be imported.</em></p>
+    @endif
+
     <form method="POST" action="{{ route('payroll-imports.preview', $run) }}" enctype="multipart/form-data">
         @csrf
 

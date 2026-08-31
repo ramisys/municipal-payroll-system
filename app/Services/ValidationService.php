@@ -47,6 +47,25 @@ class ValidationService
     }
 
     /**
+     * BR-08 dated-row pattern — a transfer or separation closes the
+     * employee's current EMPLOYMENT_DETAIL row by setting its effective_to,
+     * which chk_employment_details_effective requires to be strictly after
+     * that row's own effective_from. A row can be future-dated (a scheduled
+     * transfer), so this can't be assumed and must be checked at entry
+     * rather than left to surface as a DB constraint violation.
+     *
+     * @return array<string, string> field => the specific correction required; empty when the check passes
+     */
+    public function validateEmploymentEffectiveDate(string $currentEffectiveFrom, string $newEffectiveTo, string $field): array
+    {
+        if (! Carbon::parse($newEffectiveTo)->greaterThan(Carbon::parse($currentEffectiveFrom))) {
+            return [$field => "This date must be after the employee's current effective date ({$currentEffectiveFrom})."];
+        }
+
+        return [];
+    }
+
+    /**
      * UC-I1 step 5, UC-08 E2 — a probable duplicate by name and date of
      * birth is a warning, not a refusal: the caller routes it back to the
      * user, who must explicitly acknowledge it before the save proceeds

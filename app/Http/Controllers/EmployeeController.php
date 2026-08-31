@@ -169,6 +169,15 @@ class EmployeeController extends Controller
             return back()->withErrors($dateErrors)->withInput();
         }
 
+        $current = $this->currentEmploymentDetail($employee);
+        if ($current !== null && $this->employmentTransferChanges($current, $data)) {
+            $effectiveFrom = $data['transfer_effective_from'] ?? now()->toDateString();
+            $transferErrors = $this->validationService->validateEmploymentEffectiveDate($current->effective_from->toDateString(), $effectiveFrom, 'transfer_effective_from');
+            if ($transferErrors !== []) {
+                return back()->withErrors($transferErrors)->withInput();
+            }
+        }
+
         DB::transaction(function () use ($data, $request, $employee) {
             $previousValues = $employee->only(array_keys($this->personalFields()));
 
@@ -196,20 +205,30 @@ class EmployeeController extends Controller
     // row; it closes it (effective_to) and opens a new one, so a past
     // payroll run keeps reporting the department the employee actually
     // belonged to (data-model.md §4.1 prose, the BR-08 dated-row pattern).
-    private function applyEmploymentTransfer(Request $request, Employee $employee, array $data): void
+    private function currentEmploymentDetail(Employee $employee): ?EmploymentDetail
     {
-        $current = EmploymentDetail::query()
+        return EmploymentDetail::query()
             ->where('employee_id', $employee->employee_id)
             ->whereNull('effective_to')
             ->latest('effective_from')
             ->first();
+    }
 
-        $unchanged = $current !== null
-            && (int) $current->department_id === (int) $data['department_id']
-            && (int) $current->position_id === (int) $data['position_id']
-            && (int) $current->employment_status_id === (int) $data['employment_status_id'];
+    /**
+     * @param  array<string, mixed>  $data
+     */
+    private function employmentTransferChanges(EmploymentDetail $current, array $data): bool
+    {
+        return (int) $current->department_id !== (int) $data['department_id']
+            || (int) $current->position_id !== (int) $data['position_id']
+            || (int) $current->employment_status_id !== (int) $data['employment_status_id'];
+    }
 
-        if ($unchanged) {
+    private function applyEmploymentTransfer(Request $request, Employee $employee, array $data): void
+    {
+        $current = $this->currentEmploymentDetail($employee);
+
+        if ($current !== null && ! $this->employmentTransferChanges($current, $data)) {
             return;
         }
 
@@ -265,15 +284,16 @@ class EmployeeController extends Controller
             'separation_reason' => ['required', 'string', 'max:255'],
         ]);
 
-        $current = EmploymentDetail::query()
-            ->where('employee_id', $employee->employee_id)
-            ->whereNull('effective_to')
-            ->latest('effective_from')
-            ->firstOrFail();
+        $current = $this->currentEmploymentDetail($employee) ?? abort(404);
 
         $dateErrors = $this->validationService->validateEmployeeDateLogic($employee->birth_date->toDateString(), $current->date_hired->toDateString(), $data['separation_date']);
         if (isset($dateErrors['separation_date'])) {
             return back()->withErrors($dateErrors)->withInput();
+        }
+
+        $effectiveErrors = $this->validationService->validateEmploymentEffectiveDate($current->effective_from->toDateString(), $data['separation_date'], 'separation_date');
+        if ($effectiveErrors !== []) {
+            return back()->withErrors($effectiveErrors)->withInput();
         }
 
         DB::transaction(function () use ($request, $employee, $current, $data) {

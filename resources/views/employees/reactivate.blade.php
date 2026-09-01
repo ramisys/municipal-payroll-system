@@ -52,8 +52,8 @@
                 </x-field>
 
                 <div class="flex items-center gap-2 pt-1">
-                    <button type="submit" class="btn btn-primary">Reactivate employee</button>
-                    <a href="{{ route('employees.index') }}" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary"><x-icon name="rotate-ccw" />Reactivate employee</button>
+                    <a href="{{ route('employees.index') }}" class="btn btn-secondary"><x-icon name="x" />Cancel</a>
                 </div>
             </form>
         </x-card>

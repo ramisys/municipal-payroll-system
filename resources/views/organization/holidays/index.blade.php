@@ -7,9 +7,7 @@
     <x-page-header title="Holiday calendar">
         <x-slot:actions>
             <a href="{{ route('organization.holidays.create') }}" class="btn btn-primary">
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-                    <path d="M12 5v14M5 12h14"/>
-                </svg>
+                <x-icon name="plus" :stroke-width="2" />
                 New holiday
             </a>
         </x-slot:actions>
@@ -39,7 +37,7 @@
                     <td>{{ $holiday->holiday_type === 'REGULAR' ? 'Regular holiday' : 'Special non-working day' }}</td>
                     <td>{{ $holiday->is_local ? 'Local' : 'National' }}</td>
                     <td class="actions">
-                        <a href="{{ route('organization.holidays.edit', $holiday) }}" class="btn btn-ghost btn-sm">Edit</a>
+                        <a href="{{ route('organization.holidays.edit', $holiday) }}" class="btn btn-ghost btn-sm"><x-icon name="pencil" />Edit</a>
                     </td>
                 </tr>
             @empty

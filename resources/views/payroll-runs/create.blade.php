@@ -73,8 +73,8 @@
                 </fieldset>
 
                 <div class="flex items-center gap-2 pt-1">
-                    <button type="submit" class="btn btn-primary" @disabled($periods->isEmpty())>Create run</button>
-                    <a href="{{ route('payroll-runs.index') }}" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary" @disabled($periods->isEmpty())><x-icon name="plus" />Create run</button>
+                    <a href="{{ route('payroll-runs.index') }}" class="btn btn-secondary"><x-icon name="x" />Cancel</a>
                 </div>
             </form>
         </x-card>

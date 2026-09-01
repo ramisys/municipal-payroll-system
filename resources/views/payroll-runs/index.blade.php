@@ -7,9 +7,7 @@
     <x-page-header title="Payroll runs" subtitle="One run per pay period, population, and run type.">
         <x-slot:actions>
             <a href="{{ route('payroll-runs.create') }}" class="btn btn-primary">
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-                    <path d="M12 5v14M5 12h14"/>
-                </svg>
+                <x-icon name="plus" :stroke-width="2" />
                 Create payroll run
             </a>
         </x-slot:actions>
@@ -41,7 +39,7 @@
                     <td><x-status-badge :value="$run->run_status" /></td>
                     <td class="num">{{ $run->employee_count }}</td>
                     <td class="actions">
-                        <a href="{{ route('payroll-runs.show', $run) }}" class="btn btn-secondary btn-sm">Open</a>
+                        <a href="{{ route('payroll-runs.show', $run) }}" class="btn btn-secondary btn-sm"><x-icon name="arrow-right" class="w-3.5 h-3.5" />Open</a>
                     </td>
                 </tr>
             @empty

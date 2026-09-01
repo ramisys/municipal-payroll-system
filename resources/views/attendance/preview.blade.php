@@ -99,6 +99,7 @@
             <form method="POST" action="{{ route('attendance-import.commit') }}">
                 @csrf
                 <button type="submit" class="btn btn-primary">
+                    <x-icon name="check" />
                     Confirm and commit {{ count($accepted) }} row(s)
                 </button>
             </form>
@@ -106,7 +107,7 @@
 
         <form method="POST" action="{{ route('attendance-import.cancel') }}">
             @csrf
-            <button type="submit" class="btn btn-secondary">Cancel import</button>
+            <button type="submit" class="btn btn-secondary"><x-icon name="x" />Cancel import</button>
         </form>
     </div>
 @endsection

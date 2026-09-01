@@ -38,7 +38,7 @@
 
         <form method="POST" action="{{ route('payroll-imports.cancel', $run) }}">
             @csrf
-            <button type="submit" class="btn btn-secondary">Cancel import</button>
+            <button type="submit" class="btn btn-secondary"><x-icon name="x" />Cancel import</button>
         </form>
     @else
         <x-alert type="warn" title="Nothing has been written yet.">
@@ -85,12 +85,12 @@
         <div class="flex flex-wrap items-center gap-2">
             <form method="POST" action="{{ route('payroll-imports.commit', $run) }}">
                 @csrf
-                <button type="submit" class="btn btn-primary">Confirm and commit</button>
+                <button type="submit" class="btn btn-primary"><x-icon name="check" />Confirm and commit</button>
             </form>
 
             <form method="POST" action="{{ route('payroll-imports.cancel', $run) }}">
                 @csrf
-                <button type="submit" class="btn btn-secondary">Cancel import</button>
+                <button type="submit" class="btn btn-secondary"><x-icon name="x" />Cancel import</button>
             </form>
         </div>
     @endif

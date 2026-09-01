@@ -158,8 +158,8 @@
         @endisset
 
         <div class="flex items-center gap-2">
-            <button type="submit" class="btn btn-primary">Register employee</button>
-            <a href="{{ route('employees.index') }}" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary"><x-icon name="plus" />Register employee</button>
+            <a href="{{ route('employees.index') }}" class="btn btn-secondary"><x-icon name="x" />Cancel</a>
         </div>
     </form>
 @endsection

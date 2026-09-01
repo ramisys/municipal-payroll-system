@@ -9,7 +9,7 @@
         subtitle="{{ $employee->fullName() }} ({{ $employee->employee_no }})"
         :back="route('employees.index')" back-label="Employees">
         <x-slot:actions>
-            <a href="{{ route('employees.compensation.index', $employee) }}" class="btn btn-secondary">Compensation</a>
+            <a href="{{ route('employees.compensation.index', $employee) }}" class="btn btn-secondary"><x-icon name="wallet" />Compensation</a>
         </x-slot:actions>
     </x-page-header>
 
@@ -141,8 +141,8 @@
         </x-card>
 
         <div class="flex items-center gap-2">
-            <button type="submit" class="btn btn-primary">Save changes</button>
-            <a href="{{ route('employees.index') }}" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary"><x-icon name="save" />Save changes</button>
+            <a href="{{ route('employees.index') }}" class="btn btn-secondary"><x-icon name="x" />Cancel</a>
         </div>
     </form>
 @endsection

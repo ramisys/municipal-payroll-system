@@ -27,6 +27,6 @@
                    class="input" required minlength="8" autocomplete="new-password">
         </x-field>
 
-        <button type="submit" class="btn btn-primary w-full">Change password</button>
+        <button type="submit" class="btn btn-primary w-full"><x-icon name="key-round" />Change password</button>
     </form>
 @endsection

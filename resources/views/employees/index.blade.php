@@ -7,9 +7,7 @@
     <x-page-header title="Employees" subtitle="The employee master file. Records are deactivated, never deleted.">
         <x-slot:actions>
             <a href="{{ route('employees.create') }}" class="btn btn-primary">
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-                    <path d="M12 5v14M5 12h14"/>
-                </svg>
+                <x-icon name="plus" :stroke-width="2" />
                 Register new employee
             </a>
         </x-slot:actions>
@@ -42,9 +40,9 @@
             </x-field>
 
             <div class="flex items-center gap-2">
-                <button type="submit" class="btn btn-secondary">Filter</button>
+                <button type="submit" class="btn btn-secondary"><x-icon name="filter" />Filter</button>
                 @if (array_filter($filters ?? []))
-                    <a href="{{ route('employees.index') }}" class="btn btn-ghost">Clear</a>
+                    <a href="{{ route('employees.index') }}" class="btn btn-ghost"><x-icon name="x" />Clear</a>
                 @endif
             </div>
         </form>
@@ -72,12 +70,12 @@
                     <td><x-status-badge :value="$employee->is_active ? 'ACTIVE' : 'DEACTIVATED'" /></td>
                     <td class="actions">
                         <div class="flex items-center gap-1">
-                            <a href="{{ route('employees.edit', $employee) }}" class="btn btn-ghost btn-sm">Edit</a>
-                            <a href="{{ route('employees.compensation.index', $employee) }}" class="btn btn-ghost btn-sm">Compensation</a>
+                            <a href="{{ route('employees.edit', $employee) }}" class="btn btn-ghost btn-sm"><x-icon name="pencil" />Edit</a>
+                            <a href="{{ route('employees.compensation.index', $employee) }}" class="btn btn-ghost btn-sm"><x-icon name="wallet" />Compensation</a>
                             @if ($employee->is_active)
-                                <a href="{{ route('employees.deactivate-form', $employee) }}" class="btn btn-ghost btn-sm text-bad-fg hover:bg-bad-bg">Deactivate</a>
+                                <a href="{{ route('employees.deactivate-form', $employee) }}" class="btn btn-ghost btn-sm text-bad-fg hover:bg-bad-bg"><x-icon name="ban" />Deactivate</a>
                             @else
-                                <a href="{{ route('employees.reactivate-form', $employee) }}" class="btn btn-ghost btn-sm text-ok-fg hover:bg-ok-bg">Reactivate</a>
+                                <a href="{{ route('employees.reactivate-form', $employee) }}" class="btn btn-ghost btn-sm text-ok-fg hover:bg-ok-bg"><x-icon name="rotate-ccw" />Reactivate</a>
                             @endif
                         </div>
                     </td>

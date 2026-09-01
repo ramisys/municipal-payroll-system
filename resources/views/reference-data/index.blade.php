@@ -19,9 +19,7 @@
                    subtitle="The lookup lists the rest of the system draws from. Entries are deactivated, never deleted.">
         <x-slot:actions>
             <a href="{{ route('reference-data.create', $type) }}" class="btn btn-primary">
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-                    <path d="M12 5v14M5 12h14"/>
-                </svg>
+                <x-icon name="plus" :stroke-width="2" />
                 New {{ strtolower($config['label']) }}
             </a>
         </x-slot:actions>
@@ -75,17 +73,17 @@
                     <td class="actions">
                         <div class="flex items-center gap-1">
                             <a href="{{ route('reference-data.edit', [$type, $item->getKey()]) }}"
-                               class="btn btn-ghost btn-sm">Edit</a>
+                               class="btn btn-ghost btn-sm"><x-icon name="pencil" />Edit</a>
 
                             @if ($item->is_active)
                                 <form method="POST" action="{{ route('reference-data.deactivate', [$type, $item->getKey()]) }}">
                                     @csrf
-                                    <button type="submit" class="btn btn-ghost btn-sm text-bad-fg hover:bg-bad-bg">Deactivate</button>
+                                    <button type="submit" class="btn btn-ghost btn-sm text-bad-fg hover:bg-bad-bg"><x-icon name="ban" />Deactivate</button>
                                 </form>
                             @else
                                 <form method="POST" action="{{ route('reference-data.reactivate', [$type, $item->getKey()]) }}">
                                     @csrf
-                                    <button type="submit" class="btn btn-ghost btn-sm text-ok-fg hover:bg-ok-bg">Reactivate</button>
+                                    <button type="submit" class="btn btn-ghost btn-sm text-ok-fg hover:bg-ok-bg"><x-icon name="rotate-ccw" />Reactivate</button>
                                 </form>
                             @endif
                         </div>

@@ -33,7 +33,7 @@
                     <input type="file" id="file" name="file" class="input-file" required accept=".xlsx,.csv">
                 </x-field>
 
-                <button type="submit" class="btn btn-primary">Preview import</button>
+                <button type="submit" class="btn btn-primary"><x-icon name="eye" />Preview import</button>
             </form>
         </x-card>
     </div>

@@ -46,8 +46,8 @@
                     <td class="num font-semibold">{{ $import->control_total_net }}</td>
                     <td class="actions">
                         <div class="flex items-center gap-1">
-                            <a href="{{ route('payroll-imports.show', [$run, $import]) }}" class="btn btn-ghost btn-sm">Detail</a>
-                            <a href="{{ route('payroll-imports.download', [$run, $import]) }}" class="btn btn-ghost btn-sm">Download</a>
+                            <a href="{{ route('payroll-imports.show', [$run, $import]) }}" class="btn btn-ghost btn-sm"><x-icon name="eye" />Detail</a>
+                            <a href="{{ route('payroll-imports.download', [$run, $import]) }}" class="btn btn-ghost btn-sm"><x-icon name="download" />Download</a>
                         </div>
                     </td>
                 </tr>

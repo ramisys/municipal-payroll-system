@@ -64,7 +64,7 @@
         </x-card>
 
         <div class="flex items-center gap-2">
-            <button type="submit" class="btn btn-primary">Save changes</button>
+            <button type="submit" class="btn btn-primary"><x-icon name="save" />Save changes</button>
         </div>
     </form>
 @endsection

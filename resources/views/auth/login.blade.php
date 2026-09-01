@@ -24,6 +24,6 @@
                    class="input" required autocomplete="current-password">
         </x-field>
 
-        <button type="submit" class="btn btn-primary w-full">Sign in</button>
+        <button type="submit" class="btn btn-primary w-full"><x-icon name="log-in" />Sign in</button>
     </form>
 @endsection

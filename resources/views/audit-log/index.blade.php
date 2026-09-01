@@ -67,10 +67,10 @@
             </x-field>
 
             <div class="sm:col-span-2 lg:col-span-3 flex flex-wrap items-center gap-2">
-                <button type="submit" class="btn btn-secondary">Filter</button>
-                <button type="submit" name="verify" value="1" class="btn btn-primary">Filter and verify chain</button>
+                <button type="submit" class="btn btn-secondary"><x-icon name="filter" />Filter</button>
+                <button type="submit" name="verify" value="1" class="btn btn-primary"><x-icon name="shield-check" />Filter and verify chain</button>
                 @if (request()->hasAny(['user_id', 'entity_name', 'entity_id', 'action', 'date_from', 'date_to']))
-                    <a href="{{ route('audit-log.index') }}" class="btn btn-ghost">Clear</a>
+                    <a href="{{ route('audit-log.index') }}" class="btn btn-ghost"><x-icon name="x" />Clear</a>
                 @endif
             </div>
         </form>

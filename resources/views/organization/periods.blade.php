@@ -34,7 +34,7 @@
                        value="{{ old('pay_date_offset_days', 5) }}" required min="0" max="30">
             </x-field>
 
-            <button type="submit" class="btn btn-primary">Generate year</button>
+            <button type="submit" class="btn btn-primary"><x-icon name="calendar-plus" />Generate year</button>
         </form>
     </x-card>
 
@@ -56,7 +56,7 @@
                         <td class="tabular">{{ $period->cutoff_end->toDateString() }}</td>
                         <td class="tabular font-medium">{{ $period->pay_date->toDateString() }}</td>
                         <td class="actions">
-                            <a href="{{ route('organization.periods.edit', $period) }}" class="btn btn-ghost btn-sm">Edit</a>
+                            <a href="{{ route('organization.periods.edit', $period) }}" class="btn btn-ghost btn-sm"><x-icon name="pencil" />Edit</a>
                         </td>
                     </tr>
                 @endforeach

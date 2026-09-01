@@ -25,8 +25,8 @@
                 </x-field>
 
                 <div class="flex items-center gap-2 pt-1">
-                    <button type="submit" class="btn btn-danger-solid">Confirm cancellation</button>
-                    <a href="{{ route('payroll-runs.show', $run) }}" class="btn btn-secondary">Keep this run</a>
+                    <button type="submit" class="btn btn-danger-solid"><x-icon name="ban" />Confirm cancellation</button>
+                    <a href="{{ route('payroll-runs.show', $run) }}" class="btn btn-secondary"><x-icon name="arrow-left" />Keep this run</a>
                 </div>
             </form>
         </x-card>

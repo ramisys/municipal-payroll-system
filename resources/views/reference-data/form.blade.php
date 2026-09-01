@@ -63,8 +63,8 @@
                 @endforeach
 
                 <div class="flex items-center gap-2 pt-1">
-                    <button type="submit" class="btn btn-primary">Save</button>
-                    <a href="{{ route('reference-data.index', $type) }}" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary"><x-icon name="save" />Save</button>
+                    <a href="{{ route('reference-data.index', $type) }}" class="btn btn-secondary"><x-icon name="x" />Cancel</a>
                 </div>
             </form>
         </x-card>

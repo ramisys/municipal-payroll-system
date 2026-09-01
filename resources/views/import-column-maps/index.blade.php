@@ -7,9 +7,7 @@
     <x-page-header title="Register column mapping (CANONICAL)">
         <x-slot:actions>
             <a href="{{ route('import-column-maps.create') }}" class="btn btn-primary">
-                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">
-                    <path d="M12 5v14M5 12h14"/>
-                </svg>
+                <x-icon name="plus" :stroke-width="2" />
                 Publish a new version
             </a>
         </x-slot:actions>
@@ -38,12 +36,12 @@
                 @if ($version->is_active)
                     <form method="POST" action="{{ route('import-column-maps.deactivate', $version) }}">
                         @csrf
-                        <button type="submit" class="btn btn-danger btn-sm">Retire</button>
+                        <button type="submit" class="btn btn-danger btn-sm"><x-icon name="archive" class="w-3.5 h-3.5" />Retire</button>
                     </form>
                 @else
                     <form method="POST" action="{{ route('import-column-maps.reactivate', $version) }}">
                         @csrf
-                        <button type="submit" class="btn btn-secondary btn-sm">Reactivate</button>
+                        <button type="submit" class="btn btn-secondary btn-sm"><x-icon name="rotate-ccw" class="w-3.5 h-3.5" />Reactivate</button>
                     </form>
                 @endif
             </div>
@@ -60,7 +58,7 @@
             <p class="note">
                 No versions yet. A register cannot be imported until at least one mapping version is published.
             </p>
-            <a href="{{ route('import-column-maps.create') }}" class="btn btn-primary mt-3">Publish the first version</a>
+            <a href="{{ route('import-column-maps.create') }}" class="btn btn-primary mt-3"><x-icon name="plus" />Publish the first version</a>
         </x-card>
     @endforelse
 @endsection

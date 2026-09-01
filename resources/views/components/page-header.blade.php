@@ -4,9 +4,7 @@
     <div class="min-w-0">
         @if ($back)
             <a href="{{ $back }}" class="inline-flex items-center gap-1 text-[13px] font-medium text-ink-muted hover:text-brand-700 transition-colors duration-200 mb-1">
-                <svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                    <path d="m15 18-6-6 6-6"/>
-                </svg>
+                <x-icon name="chevron-left" class="w-3.5 h-3.5" :stroke-width="2" />
                 {{ $backLabel }}
             </a>
         @endif

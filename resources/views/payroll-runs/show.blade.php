@@ -47,26 +47,22 @@
         <div class="flex flex-wrap items-center gap-2">
             @if ($canManage)
                 <a href="{{ route('payroll-runs.worksheet', $run) }}" class="btn btn-secondary">
-                    <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                        <path d="M12 15V3m0 12-4-4m4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
-                    </svg>
+                    <x-icon name="download" />
                     Export input worksheet (UC-32)
                 </a>
 
                 @if (in_array($run->run_status, ['DRAFT', 'RETURNED'], true))
                     <a href="{{ route('payroll-imports.create', $run) }}" class="btn btn-primary">
-                        <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path d="M12 3v12m0 0-4-4m4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/>
-                        </svg>
+                        <x-icon name="upload" />
                         Import computed register (UC-18)
                     </a>
                 @endif
             @endif
 
-            <a href="{{ route('payroll-imports.history', $run) }}" class="btn btn-secondary">Import history (UC-33)</a>
+            <a href="{{ route('payroll-imports.history', $run) }}" class="btn btn-secondary"><x-icon name="history" />Import history (UC-33)</a>
 
             @if ($canManage && $run->run_status === 'DRAFT')
-                <a href="{{ route('payroll-runs.cancel-form', $run) }}" class="btn btn-danger">Cancel this run</a>
+                <a href="{{ route('payroll-runs.cancel-form', $run) }}" class="btn btn-danger"><x-icon name="ban" />Cancel this run</a>
             @endif
         </div>
     </x-card>

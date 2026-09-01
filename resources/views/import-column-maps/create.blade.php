@@ -94,8 +94,8 @@
             </x-card>
 
             <div class="flex items-center gap-2">
-                <button type="submit" class="btn btn-primary">Publish version</button>
-                <a href="{{ route('import-column-maps.index') }}" class="btn btn-secondary">Cancel</a>
+                <button type="submit" class="btn btn-primary"><x-icon name="plus" />Publish version</button>
+                <a href="{{ route('import-column-maps.index') }}" class="btn btn-secondary"><x-icon name="x" />Cancel</a>
             </div>
         </form>
     </div>

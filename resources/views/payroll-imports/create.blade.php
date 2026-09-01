@@ -41,8 +41,8 @@
                 </x-field>
 
                 <div class="flex items-center gap-2 pt-1">
-                    <button type="submit" class="btn btn-primary" @disabled($maps->isEmpty())>Preview</button>
-                    <a href="{{ route('payroll-runs.show', $run) }}" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary" @disabled($maps->isEmpty())><x-icon name="eye" />Preview</button>
+                    <a href="{{ route('payroll-runs.show', $run) }}" class="btn btn-secondary"><x-icon name="x" />Cancel</a>
                 </div>
             </form>
         </x-card>

@@ -9,7 +9,7 @@
         subtitle="{{ $employee->fullName() }} ({{ $employee->employee_no }})"
         :back="route('employees.index')" back-label="Employees">
         <x-slot:actions>
-            <a href="{{ route('employees.edit', $employee) }}" class="btn btn-secondary">Edit employee</a>
+            <a href="{{ route('employees.edit', $employee) }}" class="btn btn-secondary"><x-icon name="pencil" />Edit employee</a>
         </x-slot:actions>
     </x-page-header>
 
@@ -93,7 +93,7 @@
                 </div>
             </fieldset>
 
-            <button type="submit" class="btn btn-primary">Save profile version</button>
+            <button type="submit" class="btn btn-primary"><x-icon name="save" />Save profile version</button>
         </form>
     </x-card>
 
@@ -158,7 +158,7 @@
                 <input type="date" id="earning_effective_from" name="effective_from" class="input">
             </x-field>
 
-            <button type="submit" class="btn btn-secondary">Add earning</button>
+            <button type="submit" class="btn btn-secondary"><x-icon name="plus" />Add earning</button>
         </form>
 
         <div class="mt-4 -mx-4 -mb-4 border-t border-line">
@@ -191,7 +191,7 @@
                                     <label for="end-earning-{{ $earning->getKey() }}" class="sr-only">Effective to date</label>
                                     <input type="date" id="end-earning-{{ $earning->getKey() }}" name="effective_to"
                                            class="input btn-sm w-auto" required>
-                                    <button type="submit" class="btn btn-secondary btn-sm">End</button>
+                                    <button type="submit" class="btn btn-secondary btn-sm"><x-icon name="x" class="w-3.5 h-3.5" />End</button>
                                 </form>
                             @else
                                 <span class="note">—</span>
@@ -229,7 +229,7 @@
                 <input type="date" id="deduction_effective_from" name="effective_from" class="input">
             </x-field>
 
-            <button type="submit" class="btn btn-secondary">Add deduction</button>
+            <button type="submit" class="btn btn-secondary"><x-icon name="plus" />Add deduction</button>
         </form>
 
         <div class="mt-4 -mx-4 -mb-4 border-t border-line">
@@ -262,7 +262,7 @@
                                     <label for="end-deduction-{{ $deduction->getKey() }}" class="sr-only">Effective to date</label>
                                     <input type="date" id="end-deduction-{{ $deduction->getKey() }}" name="effective_to"
                                            class="input btn-sm w-auto" required>
-                                    <button type="submit" class="btn btn-secondary btn-sm">End</button>
+                                    <button type="submit" class="btn btn-secondary btn-sm"><x-icon name="x" class="w-3.5 h-3.5" />End</button>
                                 </form>
                             @else
                                 <span class="note">—</span>

@@ -15,8 +15,8 @@
                 @include('organization.holidays._fields')
 
                 <div class="flex items-center gap-2 pt-1">
-                    <button type="submit" class="btn btn-primary">Save changes</button>
-                    <a href="{{ route('organization.holidays.index') }}" class="btn btn-secondary">Cancel</a>
+                    <button type="submit" class="btn btn-primary"><x-icon name="save" />Save changes</button>
+                    <a href="{{ route('organization.holidays.index') }}" class="btn btn-secondary"><x-icon name="x" />Cancel</a>
                 </div>
             </form>
         </x-card>

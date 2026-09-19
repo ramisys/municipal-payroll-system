@@ -10,6 +10,7 @@ use App\Models\ImportColumnMap;
 use App\Models\PayrollImport;
 use App\Models\PayrollLine;
 use App\Models\PayrollRun;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 // ✧ UC-18 · Import computed payroll register — FR-2.5, FR-2.6, FR-2.8,
@@ -75,7 +76,7 @@ class PayrollImportService
      * PayrollImportException for E9 or a matched employee with no
      * compensation profile in force (see the exception's own docblock).
      *
-     * @return array{import: PayrollImport, changed: array<int, string>, unchanged: array<int, string>, exceptions: \Illuminate\Support\Collection}
+     * @return array{import: PayrollImport, changed: array<int, string>, unchanged: array<int, string>, exceptions: Collection}
      */
     public function commit(PayrollRun $run, string $filePath, string $originalFilename, ImportColumnMap $map, ?int $actorUserId): array
     {

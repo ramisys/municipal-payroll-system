@@ -44,9 +44,14 @@ class PayrollImportController extends Controller
         private readonly PayrollImportService $payrollImportService,
     ) {}
 
-    public function create(Request $request, PayrollRun $payrollRun): View
+    public function create(Request $request, PayrollRun $payrollRun): View|RedirectResponse
     {
         $this->authorizationService->authorize($request->user(), 'payroll_run.create_import');
+
+        if (! in_array($payrollRun->run_status, ['DRAFT', 'RETURNED'], true)) {
+            return redirect()->route('payroll-runs.show', $payrollRun)
+                ->withErrors(['import' => "AC-2.8.6: An import into an '{$payrollRun->run_status}' run is refused."]);
+        }
 
         return view('payroll-imports.create', [
             'run' => $payrollRun,
@@ -58,6 +63,11 @@ class PayrollImportController extends Controller
     public function preview(Request $request, PayrollRun $payrollRun): View|RedirectResponse
     {
         $this->authorizationService->authorize($request->user(), 'payroll_run.create_import');
+
+        if (! in_array($payrollRun->run_status, ['DRAFT', 'RETURNED'], true)) {
+            return redirect()->route('payroll-runs.show', $payrollRun)
+                ->withErrors(['import' => "AC-2.8.6: An import into an '{$payrollRun->run_status}' run is refused."]);
+        }
 
         $data = $request->validate([
             'import_column_map_id' => ['required', 'integer', 'exists:import_column_maps,import_column_map_id'],

@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 // data-model.md §4.4 / §5.1 — PAYROLL_RUN. Created by PayrollRunService
 // (UC-17, BR-34); holds no figures of its own (§7 beat 7) — total_gross,
@@ -82,6 +83,39 @@ class PayrollRun extends Model
     public function exceptions(): HasMany
     {
         return $this->hasMany(ExceptionInstance::class, 'payroll_run_id', 'payroll_run_id');
+    }
+
+    /**
+     * @return HasOne<ReversalRecord, $this>
+     */
+    public function reversalRecord(): HasOne
+    {
+        return $this->hasOne(ReversalRecord::class, 'payroll_run_id', 'payroll_run_id');
+    }
+
+    /**
+     * @return HasOne<IntegrityAnchor, $this>
+     */
+    public function integrityAnchor(): HasOne
+    {
+        return $this->hasOne(IntegrityAnchor::class, 'payroll_run_id', 'payroll_run_id')
+            ->where('scope_type', 'RUN');
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function submitter(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'submitted_by', 'user_id');
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function approver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'approved_by', 'user_id');
     }
 
     public function currentImport(): ?PayrollImport

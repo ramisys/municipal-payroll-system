@@ -10,6 +10,7 @@ use App\Http\Controllers\ExceptionReportController;
 use App\Http\Controllers\ImportColumnMapController;
 use App\Http\Controllers\OrganizationProfileController;
 use App\Http\Controllers\PayrollImportController;
+use App\Http\Controllers\PayrollRegisterController;
 use App\Http\Controllers\PayrollRunController;
 use App\Http\Controllers\ReferenceDataController;
 use App\Http\Controllers\UserController;
@@ -134,6 +135,26 @@ Route::middleware(['auth', 'session.idle', 'password.changed'])->group(function 
     Route::get('/payroll-runs/{payrollRun}/cancel', [PayrollRunController::class, 'cancelForm'])->name('payroll-runs.cancel-form');
     Route::post('/payroll-runs/{payrollRun}/cancel', [PayrollRunController::class, 'cancel'])->name('payroll-runs.cancel');
     Route::get('/payroll-runs/{payrollRun}/worksheet', [PayrollRunController::class, 'exportWorksheet'])->name('payroll-runs.worksheet');
+
+    // UC-23 · Submit payroll run ('payroll_run.submit').
+    Route::post('/payroll-runs/{payrollRun}/submit', [PayrollRunController::class, 'submit'])->name('payroll-runs.submit');
+
+    // UC-24 · Approve or return payroll run ('payroll_run.approve_return').
+    Route::post('/payroll-runs/{payrollRun}/approve', [PayrollRunController::class, 'approve'])->name('payroll-runs.approve');
+    Route::get('/payroll-runs/{payrollRun}/return', [PayrollRunController::class, 'returnForm'])->name('payroll-runs.return-form');
+    Route::post('/payroll-runs/{payrollRun}/return', [PayrollRunController::class, 'returnRun'])->name('payroll-runs.return');
+
+    // UC-25 · Finalize payroll run ('payroll_run.finalize').
+    Route::get('/payroll-runs/{payrollRun}/finalize', [PayrollRunController::class, 'finalizeForm'])->name('payroll-runs.finalize-form');
+    Route::post('/payroll-runs/{payrollRun}/finalize', [PayrollRunController::class, 'finalize'])->name('payroll-runs.finalize');
+
+    // UC-26 · Reverse finalized payroll run ('payroll_run.finalize').
+    Route::get('/payroll-runs/{payrollRun}/reverse', [PayrollRunController::class, 'reverseForm'])->name('payroll-runs.reverse-form');
+    Route::post('/payroll-runs/{payrollRun}/reverse', [PayrollRunController::class, 'reverse'])->name('payroll-runs.reverse');
+
+    // UC-21 · Review payroll register ('payroll_records.search').
+    Route::get('/payroll-runs/{payrollRun}/register', [PayrollRegisterController::class, 'show'])->name('payroll-register.show');
+    Route::get('/payroll-runs/{payrollRun}/register/export', [PayrollRegisterController::class, 'export'])->name('payroll-register.export');
 
     // UC-18 — Payroll Officer only ('payroll_run.create_import').
     Route::get('/payroll-runs/{payrollRun}/import', [PayrollImportController::class, 'create'])->name('payroll-imports.create');

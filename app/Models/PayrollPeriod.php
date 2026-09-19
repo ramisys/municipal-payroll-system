@@ -33,4 +33,17 @@ class PayrollPeriod extends Model
             'is_closed' => 'boolean',
         ];
     }
+
+    public function previousPeriod(): ?PayrollPeriod
+    {
+        return self::query()
+            ->where(function ($q) {
+                $q->where('payroll_year', $this->payroll_year)
+                    ->where('period_no', '<', $this->period_no);
+            })
+            ->orWhere('payroll_year', '<', $this->payroll_year)
+            ->orderByDesc('payroll_year')
+            ->orderByDesc('period_no')
+            ->first();
+    }
 }

@@ -39,4 +39,12 @@ class RunTransition extends Model
     {
         return $this->belongsTo(PayrollRun::class, 'payroll_run_id', 'payroll_run_id');
     }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function performer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'performed_by', 'user_id');
+    }
 }

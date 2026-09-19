@@ -25,7 +25,7 @@ What it *does* do, in the order a payroll cycle actually needs it:
 | **M6 — Payslip** | Generation, layout, batch export, reprint |
 | **M7 — Records & Reporting** | Storage, search, report generation, backup |
 
-As of this writing (week 8 of the build), **M1–M4 and the audit log are implemented and routed**; M5's approval workflow, M6 (payslips), and full M7 reporting are documented and modeled but not yet wired into the application — see [`docs/pre-oral-demonstration-plan.md`](docs/pre-oral-demonstration-plan.md) §6 for the build schedule and [`docs/evidence-pack.md`](docs/evidence-pack.md) for what's verified so far.
+As of this writing (week 9 of the build), **M1–M4 and the audit log are implemented**; **M5 exception evaluation and the exception report (UC-20) are started** — submit/approve/finalize remain W10. M6 (payslips) and full M7 reporting are documented and modeled but not yet wired — see [`docs/post-pre-oral-implementation-plan.md`](docs/post-pre-oral-implementation-plan.md) and [`docs/evidence-pack.md`](docs/evidence-pack.md).
 
 ## How it works
 

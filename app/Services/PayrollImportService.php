@@ -35,16 +35,16 @@ use Illuminate\Support\Facades\DB;
 // (2025_08_31_000033_create_payroll_lines_table) — "replaces every
 // payroll line" means UPDATE, not a parallel row.
 //
-// Out of this slice, and so absent below: UC-I4 exception evaluation (step
-// 9) and BR-23 loan-balance reduction (step 8) both trace to requirements
-// (FR-4.1, FR-2.4/UC-19) pre-oral-demonstration-plan.md §3.3/§4.1 place
-// outside the 40% slice.
+// Out of this slice, and so absent below: BR-23 loan-balance reduction
+// (UC-18 step 8 / FR-2.4). UC-I4 exception evaluation (step 9) is wired
+// through ExceptionEvaluator after the lines are written.
 class PayrollImportService
 {
     public function __construct(
         private readonly RegisterImportService $registerImportService,
         private readonly ReconciliationService $reconciliationService,
         private readonly PayrollRunService $payrollRunService,
+        private readonly ExceptionEvaluator $exceptionEvaluator,
     ) {}
 
     /**
@@ -75,7 +75,7 @@ class PayrollImportService
      * PayrollImportException for E9 or a matched employee with no
      * compensation profile in force (see the exception's own docblock).
      *
-     * @return array{import: PayrollImport, changed: array<int, string>, unchanged: array<int, string>}
+     * @return array{import: PayrollImport, changed: array<int, string>, unchanged: array<int, string>, exceptions: \Illuminate\Support\Collection}
      */
     public function commit(PayrollRun $run, string $filePath, string $originalFilename, ImportColumnMap $map, ?int $actorUserId): array
     {
@@ -227,7 +227,11 @@ class PayrollImportService
                 }
             }
 
-            return ['import' => $import, 'changed' => $changed, 'unchanged' => $unchanged];
+            // UC-I4 — re-evaluate against the lines just written; replaces
+            // any prior exception_instances for this run (supersession).
+            $exceptions = $this->exceptionEvaluator->evaluateAndPersist($run->fresh(), $actorUserId);
+
+            return ['import' => $import, 'changed' => $changed, 'unchanged' => $unchanged, 'exceptions' => $exceptions];
         });
     }
 

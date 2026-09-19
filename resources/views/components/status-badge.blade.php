@@ -14,11 +14,16 @@
     $tones = [
         // Payroll run lifecycle.
         'DRAFT' => 'badge-neutral',
+        'FOR_REVIEW' => 'badge-warn',
         'PENDING' => 'badge-warn',
         'RETURNED' => 'badge-warn',
         'APPROVED' => 'badge-ok',
         'FINALIZED' => 'badge-ok',
         'CANCELLED' => 'badge-bad',
+
+        // Exception severity.
+        'BLOCKING' => 'badge-bad',
+        'WARNING' => 'badge-warn',
 
         // Record state.
         'ACTIVE' => 'badge-ok',

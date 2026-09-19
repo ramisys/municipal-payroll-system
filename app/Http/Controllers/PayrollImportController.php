@@ -145,6 +145,18 @@ class PayrollImportController extends Controller
             $status .= ' '.count($committed['changed']).' line(s) changed, '.count($committed['unchanged']).' unchanged from the prior version.';
         }
 
+        $exceptionCount = $committed['exceptions']->count();
+        $blockingCount = $committed['exceptions']->where('severity', 'BLOCKING')->count();
+        if ($exceptionCount > 0) {
+            $status .= " Exception report: {$exceptionCount} finding(s)";
+            if ($blockingCount > 0) {
+                $status .= " ({$blockingCount} blocking)";
+            }
+            $status .= '.';
+
+            return redirect()->route('exception-report.show', $payrollRun)->with('status', $status);
+        }
+
         return redirect()->route('payroll-runs.show', $payrollRun)->with('status', $status);
     }
 

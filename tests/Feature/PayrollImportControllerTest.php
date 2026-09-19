@@ -102,7 +102,7 @@ class PayrollImportControllerTest extends TestCase
         ])->assertOk();
 
         $this->actingAs($officer)->post("/payroll-runs/{$run->payroll_run_id}/import/commit")
-            ->assertRedirect(route('payroll-runs.show', $run));
+            ->assertRedirect(route('exception-report.show', $run));
 
         $firstImport = PayrollImport::query()->where('payroll_run_id', $run->payroll_run_id)->firstOrFail();
         self::assertSame(1, $firstImport->version_no);
@@ -116,7 +116,7 @@ class PayrollImportControllerTest extends TestCase
             'file' => $this->registerUpload(),
         ])->assertOk();
         $this->actingAs($officer)->post("/payroll-runs/{$run->payroll_run_id}/import/commit")
-            ->assertRedirect(route('payroll-runs.show', $run));
+            ->assertRedirect(route('exception-report.show', $run));
 
         self::assertSame(2, PayrollImport::query()->where('payroll_run_id', $run->payroll_run_id)->count());
         $firstImport->refresh();

@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\PasswordChangeController;
 use App\Http\Controllers\Auth\SessionController;
 use App\Http\Controllers\CompensationProfileController;
 use App\Http\Controllers\EmployeeController;
+use App\Http\Controllers\ExceptionReportController;
 use App\Http\Controllers\ImportColumnMapController;
 use App\Http\Controllers\OrganizationProfileController;
 use App\Http\Controllers\PayrollImportController;
@@ -144,4 +145,8 @@ Route::middleware(['auth', 'session.idle', 'password.changed'])->group(function 
     Route::get('/payroll-runs/{payrollRun}/imports', [PayrollImportController::class, 'history'])->name('payroll-imports.history');
     Route::get('/payroll-runs/{payrollRun}/imports/{payrollImport}', [PayrollImportController::class, 'show'])->name('payroll-imports.show');
     Route::get('/payroll-runs/{payrollRun}/imports/{payrollImport}/download', [PayrollImportController::class, 'download'])->name('payroll-imports.download');
+
+    // UC-20 · Exception report (FR-4.1).
+    Route::get('/payroll-runs/{payrollRun}/exceptions', [ExceptionReportController::class, 'show'])->name('exception-report.show');
+    Route::post('/payroll-runs/{payrollRun}/exceptions/{exception}', [ExceptionReportController::class, 'acknowledge'])->name('exception-report.acknowledge');
 });

@@ -22,7 +22,7 @@ class SystemConfigSeeder extends Seeder
             ['key' => 'OVERTIME_HOURS_THRESHOLD', 'value' => '40.00', 'type' => 'decimal', 'description' => 'EX-08 — overtime hours in a period that raise a warning exception.'],
             ['key' => 'FAILED_LOGIN_LIMIT', 'value' => '5', 'type' => 'int', 'description' => 'BR-31 — failed sign-in attempts before an account is locked.'],
             ['key' => 'SESSION_TIMEOUT_MINUTES', 'value' => '30', 'type' => 'int', 'description' => 'BR-32 — idle minutes before a session expires.'],
-            ['key' => 'RECORD_RETENTION_YEARS', 'value' => '10', 'type' => 'int', 'description' => 'DR-2.1 — placeholder pending OI-10; no archival deletion is implemented regardless of this value.'],
+            ['key' => 'RECORD_RETENTION_YEARS', 'value' => '10', 'type' => 'int', 'description' => 'DR-2.1 / OI-10 — ten years (W9 decision). Archival deletion is not yet implemented; the value records the retained policy.'],
             ['key' => 'AUDIT_SEGMENT_INTERVAL_HOURS', 'value' => '24', 'type' => 'int', 'description' => 'FR-6.3 — how often an audit segment is closed and anchored.'],
             ['key' => 'ANCHOR_RETRY_LIMIT', 'value' => '5', 'type' => 'int', 'description' => 'FR-6.3 — retries before a pending anchor is reported as stalled.'],
             ['key' => 'ACTIVE_IMPORT_COLUMN_MAP', 'value' => 'CANONICAL', 'type' => 'varchar', 'description' => 'FR-2.8, BR-41 — map_name of the IMPORT_COLUMN_MAP version applied by default at import (see ImportColumnMapSeeder).'],

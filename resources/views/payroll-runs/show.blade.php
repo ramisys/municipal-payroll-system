@@ -61,6 +61,8 @@
 
             <a href="{{ route('payroll-imports.history', $run) }}" class="btn btn-secondary"><x-icon name="history" />Import history (UC-33)</a>
 
+            <a href="{{ route('exception-report.show', $run) }}" class="btn btn-secondary"><x-icon name="shield-check" />Exception report (UC-20)</a>
+
             @if ($canManage && $run->run_status === 'DRAFT')
                 <a href="{{ route('payroll-runs.cancel-form', $run) }}" class="btn btn-danger"><x-icon name="ban" />Cancel this run</a>
             @endif

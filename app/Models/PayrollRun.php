@@ -76,6 +76,14 @@ class PayrollRun extends Model
         return $this->hasMany(RunTransition::class, 'payroll_run_id', 'payroll_run_id');
     }
 
+    /**
+     * @return HasMany<ExceptionInstance, $this>
+     */
+    public function exceptions(): HasMany
+    {
+        return $this->hasMany(ExceptionInstance::class, 'payroll_run_id', 'payroll_run_id');
+    }
+
     public function currentImport(): ?PayrollImport
     {
         return $this->imports()->where('is_current', true)->first();

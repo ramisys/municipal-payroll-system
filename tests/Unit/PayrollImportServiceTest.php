@@ -12,6 +12,7 @@ use App\Models\PayrollLine;
 use App\Models\PayrollPeriod;
 use App\Models\PayrollRun;
 use App\Models\User;
+use App\Services\ExceptionEvaluator;
 use App\Services\PayrollImportException;
 use App\Services\PayrollImportService;
 use App\Services\PayrollRunService;
@@ -23,6 +24,7 @@ use Database\Seeders\DeductionTypeSeeder;
 use Database\Seeders\EarningTypeSeeder;
 use Database\Seeders\ImportColumnMapSeeder;
 use Database\Seeders\RoleSeeder;
+use Database\Seeders\SystemConfigSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -46,13 +48,19 @@ class PayrollImportServiceTest extends TestCase
         $this->seed(EarningTypeSeeder::class);
         $this->seed(DeductionTypeSeeder::class);
         $this->seed(ImportColumnMapSeeder::class);
+        $this->seed(SystemConfigSeeder::class);
     }
 
     private function service(): PayrollImportService
     {
         $payrollRunService = new PayrollRunService;
 
-        return new PayrollImportService(new RegisterImportService, new ReconciliationService, $payrollRunService);
+        return new PayrollImportService(
+            new RegisterImportService,
+            new ReconciliationService,
+            $payrollRunService,
+            new ExceptionEvaluator,
+        );
     }
 
     // created_by/imported_by both FK users.user_id — a real seeded user,

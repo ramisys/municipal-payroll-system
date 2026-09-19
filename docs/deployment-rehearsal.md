@@ -40,6 +40,25 @@ pre-oral-demonstration-plan.md §6 Table 6, W8: feature freeze — the codebase 
 | Development machine, W8 recheck of all M1-M4 code for outbound calls | 2026-08-31 | Pass — see "Week 8 re-verification" above |
 | Target/staging machine, network cable disconnected | *pending* | *pending — needs physical hardware; the procedure above takes minutes once available* |
 
+## Week 9 — post-pre-oral P0 gate
+
+post-pre-oral-implementation-plan.md W9: physical offline deployment, staging reset from the release artifact, pre-oral evidence archive, OI closures, and the first M5 exception path.
+
+**Recorded in this build session (2026-09-19):**
+
+- OI-09, OI-13, OI-14, OI-06/07, OI-10, and OI-11 closed by adopting plan defaults — see [post-pre-oral-implementation-plan.md](./post-pre-oral-implementation-plan.md) §9 "W9 decisions".
+- Fixture decision: `register_clean.xlsx` is the corrected register (evidence-pack row 8).
+- M5 started: `ExceptionEvaluator`, exception report screen (UC-20), acknowledgment path, wired after UC-18 import.
+
+**Still requires physical hardware / staging operator** (unchanged from W1/W8):
+
+1. Build artifact (`composer install --no-dev`, `npm run build`, optimize caches).
+2. Copy to staging, disconnect network, confirm `/` and `/up`.
+3. `php artisan migrate:fresh --seed` on staging; record versions and seed counts.
+4. Run pre-oral regression on staging (`IntakeFidelityValidationSetTest`, `ReconciliationServiceTest`) and fill the rehearsal table in evidence-pack.md.
+
+Until those four steps are recorded in the table above, milestone **P-A: Staging handoff** remains open even though the M5 exception path is in code.
+
 ## Migration run from empty (DR-1.6, captured W8)
 
 pre-oral-demonstration-plan.md §8's evidence table names this row separately from the artifact rehearsal above — architecture §8.4's reproducibility claim requires the schema itself, not only the built code, to come up clean from nothing.

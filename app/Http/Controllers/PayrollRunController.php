@@ -6,6 +6,7 @@ use App\Models\Department;
 use App\Models\PayrollImport;
 use App\Models\PayrollPeriod;
 use App\Models\PayrollRun;
+use App\Models\PayslipIssuance;
 use App\Services\AuditService;
 use App\Services\AuthorizationService;
 use App\Services\PayrollRunException;
@@ -119,6 +120,8 @@ class PayrollRunController extends Controller
         $canSubmit = $this->authorizationService->can($user, 'payroll_run.submit');
         $canApproveReturn = $this->authorizationService->can($user, 'payroll_run.approve_return');
         $canFinalize = $this->authorizationService->can($user, 'payroll_run.finalize');
+        $canGeneratePayslips = $this->authorizationService->can($user, 'payslips.generate');
+        $canReprintPayslips = $this->authorizationService->can($user, 'payslips.reprint');
 
         $isSubmitter = (int) $payrollRun->submitted_by === (int) $user->user_id;
         $hasBlockingExceptions = $payrollRun->exceptions()->where('severity', 'BLOCKING')->exists();
@@ -129,6 +132,13 @@ class PayrollRunController extends Controller
         $payDatePassed = $payrollRun->period->pay_date->isPast();
         $canReverse = ($payrollRun->run_status === 'FINALIZED') && ! ($hasIssuedPayslips && $payDatePassed);
 
+        // W11 · payslip state for the run (UC-27/UC-28 evidence + buttons).
+        $issuanceCounts = PayslipIssuance::query()
+            ->where('payroll_run_id', $payrollRun->payroll_run_id)
+            ->selectRaw('issuance_type, COUNT(*) AS cnt')
+            ->groupBy('issuance_type')
+            ->pluck('cnt', 'issuance_type');
+
         return view('payroll-runs.show', [
             'run' => $payrollRun,
             'currentImport' => $currentImport,
@@ -137,6 +147,11 @@ class PayrollRunController extends Controller
             'canSubmit' => $canSubmit,
             'canApproveReturn' => $canApproveReturn,
             'canFinalize' => $canFinalize,
+            'canGeneratePayslips' => $canGeneratePayslips,
+            'canReprintPayslips' => $canReprintPayslips,
+            'originalIssuances' => (int) ($issuanceCounts['ORIGINAL'] ?? 0),
+            'reprintIssuances' => (int) ($issuanceCounts['REPRINT'] ?? 0),
+            'departments' => Department::query()->where('is_active', true)->orderBy('department_name')->get(),
             'isSubmitter' => $isSubmitter,
             'hasBlockingExceptions' => $hasBlockingExceptions,
             'hasUnacknowledgedWarnings' => $hasUnacknowledgedWarnings,

@@ -12,6 +12,7 @@ use App\Http\Controllers\OrganizationProfileController;
 use App\Http\Controllers\PayrollImportController;
 use App\Http\Controllers\PayrollRegisterController;
 use App\Http\Controllers\PayrollRunController;
+use App\Http\Controllers\PayslipController;
 use App\Http\Controllers\ReferenceDataController;
 use App\Http\Controllers\UserController;
 use App\Services\AuthorizationService;
@@ -170,4 +171,11 @@ Route::middleware(['auth', 'session.idle', 'password.changed'])->group(function 
     // UC-20 · Exception report (FR-4.1).
     Route::get('/payroll-runs/{payrollRun}/exceptions', [ExceptionReportController::class, 'show'])->name('exception-report.show');
     Route::post('/payroll-runs/{payrollRun}/exceptions/{exception}', [ExceptionReportController::class, 'acknowledge'])->name('exception-report.acknowledge');
+
+    // UC-27 · Generate payslips — FR-3.1..3.3 ('payslips.generate', PO).
+    Route::post('/payroll-runs/{payrollRun}/payslips/generate', [PayslipController::class, 'generate'])->name('payslips.generate');
+
+    // UC-28 · Reprint payslip — FR-3.4 ('payslips.reprint'; PO, Approver, Admin, Viewer-read).
+    Route::get('/payroll-runs/{payrollRun}/payslips/{employee}/pdf', [PayslipController::class, 'pdf'])->name('payslips.pdf');
+    Route::post('/payroll-runs/{payrollRun}/payslips/{employee}/reprint', [PayslipController::class, 'reprint'])->name('payslips.reprint');
 });

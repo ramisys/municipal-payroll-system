@@ -231,6 +231,53 @@
     </x-card>
 
     {{-- ------------------------------------------------------------------ --}}
+    {{-- Payslips — W11 (UC-27/UC-28, FR-3.1..3.4)                            --}}
+    {{-- ------------------------------------------------------------------ --}}
+    <x-card title="Payslips (M6 · W11)" class="mb-6">
+        <div class="flex items-center gap-6 text-sm">
+            <x-kv label="Original payslips issued">
+                <span class="font-semibold tabular">{{ $originalIssuances }}</span>
+            </x-kv>
+            <x-kv label="Reports">
+                <span class="font-semibold tabular">{{ $reprintIssuances }}</span>
+            </x-kv>
+            <x-kv label="Population">
+                <span class="tabular">{{ $run->employee_count }} employee(s)</span>
+            </x-kv>
+        </div>
+
+        @if ($run->run_status !== 'FINALIZED')
+            <x-note class="mt-4">
+                Payslips open only after the run is Finalized (AC-3.1.3 / AC-4.4.4). Current status:
+                <span class="font-semibold">{{ $run->run_status }}</span>.
+            </x-note>
+        @elseif ($canGeneratePayslips)
+            <form method="POST" action="{{ route('payslips.generate', $run) }}" class="mt-4 flex flex-wrap items-end gap-3"
+                onsubmit="return confirm('Generate the payslip set for all {{ $run->employee_count }} employee(s) of this run as one PDF? Residue exports repeat harmlessly (AC-3.1.4).');">
+                @csrf
+                <label class="block">
+                    <span class="text-xs font-medium text-stone-500 dark:text-stone-400">Filter by department (optional)</span>
+                    <select name="department_id" class="select mt-1">
+                        <option value="">All departments</option>
+                        @foreach ($departments as $department)
+                            <option value="{{ $department->department_id }}">{{ $department->department_name }}</option>
+                        @endforeach
+                    </select>
+                </label>
+                <button type="submit" class="btn btn-primary">
+                    <x-icon name="download" />
+                    Generate All Payslips (UC-27)
+                </button>
+            </form>
+        @else
+            <x-note class="mt-4">
+                The run is Finalized but you lack the <code>payslips.generate</code> permission (Payroll Officer). A reprint
+                of any payslip is available in the payroll-lines table below.
+            </x-note>
+        @endif
+    </x-card>
+
+    {{-- ------------------------------------------------------------------ --}}
     {{-- Transition History (AC-4.4.5)                                      --}}
     {{-- ------------------------------------------------------------------ --}}
     <x-card
@@ -289,6 +336,7 @@
                     <th class="num">Gross pay</th>
                     <th class="num">Total deductions</th>
                     <th class="num">Net pay</th>
+                    <th>Payslip (UC-27/28)</th>
                 </x-slot:head>
 
                 @forelse ($run->lines->where('payroll_import_id', $currentImport->payroll_import_id) as $line)
@@ -298,9 +346,30 @@
                         <td class="num tabular">{{ $line->gross_pay }}</td>
                         <td class="num tabular text-red-600 dark:text-red-400">{{ $line->total_deductions }}</td>
                         <td class="num tabular font-semibold text-emerald-600 dark:text-emerald-400">{{ $line->net_pay }}</td>
+                        <td>
+                            @if ($run->run_status === 'FINALIZED' && $canReprintPayslips)
+                                <div class="flex items-center gap-1.5">
+                                    <a href="{{ route('payslips.pdf', [$run, $line->employee]) }}" class="btn btn-sm btn-ghost"
+                                        title="View PDF (read-only, nothing recorded)">
+                                        <x-icon name="eye" />
+                                        PDF
+                                    </a>
+                                    <form method="POST" action="{{ route('payslips.reprint', [$run, $line->employee]) }}"
+                                        onsubmit="return confirm('Reissue employee {{ $line->employee->employee_no }}'s payslip? A reprint is recorded (AC-3.4.3).');">
+                                        @csrf
+                                        <button type="submit" class="btn btn-sm btn-ghost" title="Reissue and record a reprint">
+                                            <x-icon name="rotate-ccw" />
+                                            Reprint
+                                        </button>
+                                    </form>
+                                </div>
+                            @else
+                                <span class="text-stone-400 text-xs italic">After finalization</span>
+                            @endif
+                        </td>
                     </tr>
                 @empty
-                    <x-empty-state :colspan="5" message="This import contains no payroll lines." />
+                    <x-empty-state :colspan="6" message="This import contains no payroll lines." />
                 @endforelse
             </x-table>
         </x-card>

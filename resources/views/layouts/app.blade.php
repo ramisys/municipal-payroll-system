@@ -30,12 +30,15 @@
                 ['route' => 'organization.edit', 'label' => 'Organization', 'show' => $navCan['organization'], 'match' => 'organization.*'],
                 ['route' => 'reference-data.index', 'label' => 'Reference data', 'show' => $navCan['referenceData'], 'match' => 'reference-data.*', 'params' => 'departments'],
                 ['route' => 'import-column-maps.index', 'label' => 'Column mapping', 'show' => $navCan['organization'], 'match' => 'import-column-maps.*'],
+                ['route' => 'statutory-schedules.index', 'label' => 'Statutory tables', 'show' => $navCan['statutorySchedules'], 'match' => 'statutory-schedules.*'],
+                ['route' => 'backups.index', 'label' => 'Database backups', 'show' => $navCan['backups'], 'match' => 'backups.*'],
             ],
         ],
         [
             'label' => 'Oversight',
             'items' => [
                 ['route' => 'audit-log.index', 'label' => 'Audit log', 'show' => $navCan['auditLog'], 'match' => 'audit-log.*'],
+                ['route' => 'integrity.index', 'label' => 'Integrity verification', 'show' => $navCan['integrity'], 'match' => 'integrity.*'],
             ],
         ],
     ];
@@ -51,7 +54,10 @@
         'organization.edit' => 'M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5M9 11h.01M15 11h.01',
         'reference-data.index' => 'M4 6h16M4 12h16M4 18h10',
         'import-column-maps.index' => 'M4 5h5v14H4V5Zm11 0h5v14h-5V5Zm-6 7h6',
+        'statutory-schedules.index' => 'M3 3h18v18H3V3zm3 4h12M6 11h12M6 15h12',
+        'backups.index' => 'M4 14.899A7 7 0 1 1 15.71 8h1.79a4.5 4.5 0 0 1 2.5 8.242M12 12v9m-4-4 4 4 4-4',
         'audit-log.index' => 'M9 12h6m-6 4h4M8 3h8l4 4v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h3Zm7 0v5h5',
+        'integrity.index' => 'M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z',
     ];
 
     $isActive = function (string $patterns): bool {

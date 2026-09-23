@@ -22,6 +22,7 @@ class DatabaseSeeder extends Seeder
             HolidaySeeder::class,
             SystemConfigSeeder::class,
             RoleSeeder::class,
+            StatutoryScheduleSeeder::class,
             ImportColumnMapSeeder::class,
             UserSeeder::class,
             EmployeeDemoSeeder::class,

@@ -3,16 +3,23 @@
 namespace App\Services;
 
 use App\Models\Department;
+use App\Models\Employee;
 use App\Models\OrganizationProfile;
+use App\Models\PayrollPeriod;
 use App\Models\PayrollRun;
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 // UC-30 · Generate report — FR-5.3, BR-14, BR-20.
-// Provides the 11-report catalogue foundation, parameter validation,
-// and generation for foundational operational reports (Payroll Register, Payroll Summary).
+// Complete 11-report catalogue outputs from stored payroll and HR data.
+// Calls StatutoryScheduleService to derive employer shares where absent (AC-2.3.4, OI-13).
 // Watermarks provisional if underlying run is not finalized (AC-5.3.5).
 class ReportService
 {
+    public function __construct(
+        private readonly StatutoryScheduleService $statutoryScheduleService,
+    ) {}
+
     /**
      * The complete 11-report catalogue as defined in FR-5.3.
      *
@@ -26,7 +33,7 @@ class ReportService
      *     requires_year: bool,
      *     supports_department: bool,
      *     supports_employee: bool,
-     *     implemented_in_w12: bool,
+     *     implemented: bool,
      * }>
      */
     public function catalogue(): array
@@ -42,7 +49,7 @@ class ReportService
                 'requires_year' => false,
                 'supports_department' => true,
                 'supports_employee' => false,
-                'implemented_in_w12' => true,
+                'implemented' => true,
             ],
             'payroll_summary' => [
                 'slug' => 'payroll_summary',
@@ -54,7 +61,7 @@ class ReportService
                 'requires_year' => false,
                 'supports_department' => true,
                 'supports_employee' => false,
-                'implemented_in_w12' => true,
+                'implemented' => true,
             ],
             'sss_remittance' => [
                 'slug' => 'sss_remittance',
@@ -66,7 +73,7 @@ class ReportService
                 'requires_year' => false,
                 'supports_department' => true,
                 'supports_employee' => false,
-                'implemented_in_w12' => false,
+                'implemented' => true,
             ],
             'philhealth_remittance' => [
                 'slug' => 'philhealth_remittance',
@@ -78,7 +85,7 @@ class ReportService
                 'requires_year' => false,
                 'supports_department' => true,
                 'supports_employee' => false,
-                'implemented_in_w12' => false,
+                'implemented' => true,
             ],
             'pagibig_remittance' => [
                 'slug' => 'pagibig_remittance',
@@ -90,7 +97,7 @@ class ReportService
                 'requires_year' => false,
                 'supports_department' => true,
                 'supports_employee' => false,
-                'implemented_in_w12' => false,
+                'implemented' => true,
             ],
             'withholding_tax' => [
                 'slug' => 'withholding_tax',
@@ -102,7 +109,7 @@ class ReportService
                 'requires_year' => false,
                 'supports_department' => true,
                 'supports_employee' => false,
-                'implemented_in_w12' => false,
+                'implemented' => true,
             ],
             'bank_transmittal' => [
                 'slug' => 'bank_transmittal',
@@ -114,7 +121,7 @@ class ReportService
                 'requires_year' => false,
                 'supports_department' => true,
                 'supports_employee' => false,
-                'implemented_in_w12' => false,
+                'implemented' => true,
             ],
             'thirteenth_month' => [
                 'slug' => 'thirteenth_month',
@@ -126,7 +133,7 @@ class ReportService
                 'requires_year' => true,
                 'supports_department' => true,
                 'supports_employee' => false,
-                'implemented_in_w12' => false,
+                'implemented' => true,
             ],
             'leave_ledger' => [
                 'slug' => 'leave_ledger',
@@ -138,7 +145,7 @@ class ReportService
                 'requires_year' => true,
                 'supports_department' => true,
                 'supports_employee' => true,
-                'implemented_in_w12' => false,
+                'implemented' => true,
             ],
             'loan_ledger' => [
                 'slug' => 'loan_ledger',
@@ -150,7 +157,7 @@ class ReportService
                 'requires_year' => true,
                 'supports_department' => true,
                 'supports_employee' => true,
-                'implemented_in_w12' => false,
+                'implemented' => true,
             ],
             'cost_comparison' => [
                 'slug' => 'cost_comparison',
@@ -162,7 +169,7 @@ class ReportService
                 'requires_year' => false,
                 'supports_department' => true,
                 'supports_employee' => false,
-                'implemented_in_w12' => false,
+                'implemented' => true,
             ],
         ];
     }
@@ -183,10 +190,7 @@ class ReportService
     }
 
     /**
-     * Generate data for the Payroll Register report.
-     *
-     * @param  array<string, mixed>  $params
-     * @return array<string, mixed>
+     * 1. Payroll Register Report.
      */
     public function generatePayrollRegister(array $params): array
     {
@@ -202,10 +206,8 @@ class ReportService
             ->with([
                 'employee.employmentDetails.department',
                 'employee.employmentDetails.position',
-                'employee.employmentDetails.employmentStatus',
                 'earningLines.earningType',
                 'deductionLines.deductionType',
-                'compensationProfile',
             ])
             ->join('employees', 'employees.employee_id', '=', 'payroll_lines.employee_id')
             ->select('payroll_lines.*')
@@ -224,31 +226,26 @@ class ReportService
         $totDeductions = '0.00';
         $totNet = '0.00';
         $totDays = '0.00';
-        $totHours = '0.00';
 
         foreach ($lines as $line) {
             $totGross = bcadd($totGross, (string) $line->gross_pay, 2);
             $totDeductions = bcadd($totDeductions, (string) $line->total_deductions, 2);
             $totNet = bcadd($totNet, (string) $line->net_pay, 2);
             $totDays = bcadd($totDays, (string) $line->days_worked, 2);
-            $totHours = bcadd($totHours, (string) $line->hours_worked, 2);
         }
-
-        $isProvisional = $run->run_status !== 'FINALIZED';
 
         return [
             'meta' => $this->getReportMeta('payroll_register'),
             'run' => $run,
             'period' => $run->period,
             'lines' => $lines,
-            'is_provisional' => $isProvisional,
+            'is_provisional' => $run->run_status !== 'FINALIZED',
             'totals' => [
                 'employee_count' => $lines->count(),
                 'gross_pay' => $totGross,
                 'total_deductions' => $totDeductions,
                 'net_pay' => $totNet,
                 'days_worked' => $totDays,
-                'hours_worked' => $totHours,
             ],
             'parameters' => $this->describeParameters($params, $run),
             'org' => OrganizationProfile::first(),
@@ -256,10 +253,7 @@ class ReportService
     }
 
     /**
-     * Generate data for the Payroll Summary report.
-     *
-     * @param  array<string, mixed>  $params
-     * @return array<string, mixed>
+     * 2. Payroll Summary Report.
      */
     public function generatePayrollSummary(array $params): array
     {
@@ -287,7 +281,6 @@ class ReportService
 
         $lines = $linesQuery->get();
 
-        // Department breakdown
         $departmentSummaries = [];
         $earningCategoryTotals = [];
         $deductionCategoryTotals = [];
@@ -319,7 +312,7 @@ class ReportService
             $grandNet = bcadd($grandNet, (string) $line->net_pay, 2);
 
             foreach ($line->earningLines as $el) {
-                $name = $el->earningType?->earning_name ?? 'Basic / Other Earning';
+                $name = $el->earningType?->earning_name ?? 'Basic Pay';
                 $earningCategoryTotals[$name] = bcadd($earningCategoryTotals[$name] ?? '0.00', (string) $el->amount, 2);
             }
 
@@ -333,8 +326,6 @@ class ReportService
         ksort($earningCategoryTotals);
         ksort($deductionCategoryTotals);
 
-        $isProvisional = $run->run_status !== 'FINALIZED';
-
         return [
             'meta' => $this->getReportMeta('payroll_summary'),
             'run' => $run,
@@ -342,7 +333,7 @@ class ReportService
             'department_summaries' => array_values($departmentSummaries),
             'earning_totals' => $earningCategoryTotals,
             'deduction_totals' => $deductionCategoryTotals,
-            'is_provisional' => $isProvisional,
+            'is_provisional' => $run->run_status !== 'FINALIZED',
             'totals' => [
                 'employee_count' => $lines->count(),
                 'gross_pay' => $grandGross,
@@ -352,6 +343,648 @@ class ReportService
             'parameters' => $this->describeParameters($params, $run),
             'org' => OrganizationProfile::first(),
         ];
+    }
+
+    /**
+     * 3. SSS Remittance Report (FR-5.3, AC-2.3.4, AC-5.3.2).
+     */
+    public function generateSssRemittance(array $params): array
+    {
+        return $this->generateStatutoryRemittanceReport('SSS', 'sss_remittance', $params);
+    }
+
+    /**
+     * 4. PhilHealth Remittance Report (FR-5.3, AC-2.3.4, AC-5.3.2).
+     */
+    public function generatePhilhealthRemittance(array $params): array
+    {
+        return $this->generateStatutoryRemittanceReport('PHILHEALTH', 'philhealth_remittance', $params);
+    }
+
+    /**
+     * 5. Pag-IBIG Remittance Report (FR-5.3, AC-2.3.4, AC-5.3.2).
+     */
+    public function generatePagibigRemittance(array $params): array
+    {
+        return $this->generateStatutoryRemittanceReport('PAGIBIG', 'pagibig_remittance', $params);
+    }
+
+    /**
+     * Helper for Statutory Remittance Reports (SSS, PhilHealth, Pag-IBIG).
+     */
+    protected function generateStatutoryRemittanceReport(string $agency, string $slug, array $params): array
+    {
+        $run = $this->resolveRun($params);
+        $currentImport = $run->currentImport();
+
+        if ($currentImport === null) {
+            throw new InvalidArgumentException('No accepted register import exists for this payroll run.');
+        }
+
+        $linesQuery = $run->lines()
+            ->where('payroll_import_id', $currentImport->payroll_import_id)
+            ->with([
+                'employee.employmentDetails.department',
+                'deductionLines.deductionType',
+                'compensationProfile',
+            ])
+            ->join('employees', 'employees.employee_id', '=', 'payroll_lines.employee_id')
+            ->select('payroll_lines.*')
+            ->orderBy('employees.employee_no');
+
+        if (! empty($params['department_id'])) {
+            $deptId = (int) $params['department_id'];
+            $linesQuery->whereHas('employee.employmentDetails', function ($q) use ($deptId) {
+                $q->where('department_id', $deptId);
+            });
+        }
+
+        $allLines = $linesQuery->get();
+        $payDate = $run->period->pay_date->format('Y-m-d');
+
+        $rows = [];
+        $totEe = '0.00';
+        $totEr = '0.00';
+        $totTotal = '0.00';
+
+        foreach ($allLines as $line) {
+            $emp = $line->employee;
+
+            // Find agency deduction line
+            $agencyDl = $line->deductionLines->first(function ($dl) use ($agency) {
+                $code = strtoupper($dl->deductionType?->deduction_code ?? '');
+                $name = strtoupper($dl->deductionType?->deduction_name ?? '');
+
+                return match ($agency) {
+                    'SSS' => str_contains($code, 'SSS') || str_contains($name, 'SSS'),
+                    'PHILHEALTH' => str_contains($code, 'PHILHEALTH') || str_contains($code, 'PHIC') || str_contains($name, 'PHILHEALTH'),
+                    'PAGIBIG' => str_contains($code, 'PAGIBIG') || str_contains($code, 'HDMF') || str_contains($name, 'PAG-IBIG') || str_contains($name, 'PAGIBIG'),
+                    default => false,
+                };
+            });
+
+            // Employee covered if has deduction or has government agency ID number
+            $idNumber = match ($agency) {
+                'SSS' => $emp?->sss_no,
+                'PHILHEALTH' => $emp?->philhealth_no,
+                'PAGIBIG' => $emp?->pagibig_no,
+                default => null,
+            };
+
+            if (! $agencyDl && empty($idNumber)) {
+                continue; // skip un-covered employees per AC-5.3.4
+            }
+
+            $eeShare = $agencyDl ? (string) ($agencyDl->employee_share ?? $agencyDl->amount) : '0.00';
+
+            // Derive employer share
+            $erResult = $this->statutoryScheduleService->deriveEmployerShare($agency, $line, $payDate);
+            $erShare = $erResult['amount'];
+            $totalContribution = bcadd($eeShare, $erShare, 2);
+
+            $totEe = bcadd($totEe, $eeShare, 2);
+            $totEr = bcadd($totEr, $erShare, 2);
+            $totTotal = bcadd($totTotal, $totalContribution, 2);
+
+            $rows[] = [
+                'employee_no' => $emp?->employee_no ?? '—',
+                'employee_name' => $emp?->fullName() ?? '—',
+                'id_number' => $idNumber ?? 'MISSING',
+                'department' => $emp?->currentEmploymentDetail?->department?->department_name ?? '—',
+                'employee_share' => $eeShare,
+                'employer_share' => $erShare,
+                'total_contribution' => $totalContribution,
+                'source' => $erResult['source'],
+                'schedule_version' => $erResult['schedule_version'],
+            ];
+        }
+
+        $org = OrganizationProfile::first();
+        $employerAgencyId = match ($agency) {
+            'SSS' => $org?->sss_employer_no,
+            'PHILHEALTH' => $org?->philhealth_employer_no,
+            'PAGIBIG' => $org?->pagibig_employer_no,
+            default => null,
+        };
+
+        return [
+            'meta' => $this->getReportMeta($slug),
+            'run' => $run,
+            'period' => $run->period,
+            'agency' => $agency,
+            'employer_agency_id' => $employerAgencyId,
+            'rows' => $rows,
+            'is_provisional' => $run->run_status !== 'FINALIZED',
+            'totals' => [
+                'employee_count' => count($rows),
+                'employee_share' => $totEe,
+                'employer_share' => $totEr,
+                'total_contribution' => $totTotal,
+            ],
+            'parameters' => $this->describeParameters($params, $run),
+            'org' => $org,
+        ];
+    }
+
+    /**
+     * 6. Withholding Tax Report (BIR).
+     */
+    public function generateWithholdingTax(array $params): array
+    {
+        $run = $this->resolveRun($params);
+        $currentImport = $run->currentImport();
+
+        if ($currentImport === null) {
+            throw new InvalidArgumentException('No accepted register import exists for this payroll run.');
+        }
+
+        $linesQuery = $run->lines()
+            ->where('payroll_import_id', $currentImport->payroll_import_id)
+            ->with([
+                'employee.employmentDetails.department',
+                'earningLines',
+                'deductionLines.deductionType',
+            ])
+            ->join('employees', 'employees.employee_id', '=', 'payroll_lines.employee_id')
+            ->select('payroll_lines.*')
+            ->orderBy('employees.employee_no');
+
+        if (! empty($params['department_id'])) {
+            $deptId = (int) $params['department_id'];
+            $linesQuery->whereHas('employee.employmentDetails', function ($q) use ($deptId) {
+                $q->where('department_id', $deptId);
+            });
+        }
+
+        $lines = $linesQuery->get();
+
+        $rows = [];
+        $totTaxable = '0.00';
+        $totWithheld = '0.00';
+
+        foreach ($lines as $line) {
+            $emp = $line->employee;
+
+            // Compute taxable compensation: sum of earning lines flagged is_taxable
+            $taxableSum = '0.00';
+            foreach ($line->earningLines as $el) {
+                if ($el->is_taxable) {
+                    $taxableSum = bcadd($taxableSum, (string) $el->amount, 2);
+                }
+            }
+
+            // Find WTAX deduction
+            $wtaxDl = $line->deductionLines->first(function ($dl) {
+                $code = strtoupper($dl->deductionType?->deduction_code ?? '');
+                $name = strtoupper($dl->deductionType?->deduction_name ?? '');
+
+                return str_contains($code, 'WTAX') || str_contains($code, 'BIR') || str_contains($name, 'WITHHOLDING');
+            });
+
+            $taxWithheld = $wtaxDl ? (string) $wtaxDl->amount : '0.00';
+
+            $totTaxable = bcadd($totTaxable, $taxableSum, 2);
+            $totWithheld = bcadd($totWithheld, $taxWithheld, 2);
+
+            $rows[] = [
+                'employee_no' => $emp?->employee_no ?? '—',
+                'employee_name' => $emp?->fullName() ?? '—',
+                'tin_no' => $emp?->tin_no ?? 'MISSING',
+                'department' => $emp?->currentEmploymentDetail?->department?->department_name ?? '—',
+                'taxable_compensation' => $taxableSum,
+                'tax_withheld' => $taxWithheld,
+            ];
+        }
+
+        $org = OrganizationProfile::first();
+
+        return [
+            'meta' => $this->getReportMeta('withholding_tax'),
+            'run' => $run,
+            'period' => $run->period,
+            'employer_tin' => $org?->tin_no,
+            'rows' => $rows,
+            'is_provisional' => $run->run_status !== 'FINALIZED',
+            'totals' => [
+                'employee_count' => count($rows),
+                'taxable_compensation' => $totTaxable,
+                'tax_withheld' => $totWithheld,
+            ],
+            'parameters' => $this->describeParameters($params, $run),
+            'org' => $org,
+        ];
+    }
+
+    /**
+     * 7. Bank Transmittal Listing.
+     */
+    public function generateBankTransmittal(array $params): array
+    {
+        $run = $this->resolveRun($params);
+        $currentImport = $run->currentImport();
+
+        if ($currentImport === null) {
+            throw new InvalidArgumentException('No accepted register import exists for this payroll run.');
+        }
+
+        $linesQuery = $run->lines()
+            ->where('payroll_import_id', $currentImport->payroll_import_id)
+            ->with(['employee.employmentDetails.department'])
+            ->join('employees', 'employees.employee_id', '=', 'payroll_lines.employee_id')
+            ->select('payroll_lines.*')
+            ->orderBy('employees.employee_no');
+
+        if (! empty($params['department_id'])) {
+            $deptId = (int) $params['department_id'];
+            $linesQuery->whereHas('employee.employmentDetails', function ($q) use ($deptId) {
+                $q->where('department_id', $deptId);
+            });
+        }
+
+        $lines = $linesQuery->get();
+
+        $rows = [];
+        $totNet = '0.00';
+
+        foreach ($lines as $line) {
+            $emp = $line->employee;
+            $net = (string) $line->net_pay;
+            $totNet = bcadd($totNet, $net, 2);
+
+            $rows[] = [
+                'employee_no' => $emp?->employee_no ?? '—',
+                'employee_name' => $emp?->fullName() ?? '—',
+                'bank_name' => $emp?->bank_name ?? 'Default Disbursing Bank',
+                'bank_account_no' => $emp?->bank_account_no ?? 'CASH / UNRECORDED',
+                'net_pay' => $net,
+            ];
+        }
+
+        return [
+            'meta' => $this->getReportMeta('bank_transmittal'),
+            'run' => $run,
+            'period' => $run->period,
+            'rows' => $rows,
+            'is_provisional' => $run->run_status !== 'FINALIZED',
+            'totals' => [
+                'employee_count' => count($rows),
+                'net_pay' => $totNet,
+            ],
+            'parameters' => $this->describeParameters($params, $run),
+            'org' => OrganizationProfile::first(),
+        ];
+    }
+
+    /**
+     * 8. 13th Month Pay Report (FR-5.3, BR-12, OI-14).
+     */
+    public function generateThirteenthMonth(array $params): array
+    {
+        $year = (int) ($params['payroll_year'] ?? date('Y'));
+
+        // All active employees
+        $empQuery = Employee::query()->where('is_active', true)->with(['currentEmploymentDetail.department']);
+
+        if (! empty($params['department_id'])) {
+            $deptId = (int) $params['department_id'];
+            $empQuery->whereHas('employmentDetails', function ($q) use ($deptId) {
+                $q->where('department_id', $deptId);
+            });
+        }
+
+        $employees = $empQuery->orderBy('employee_no')->get();
+
+        // 13th month run for this year (if imported)
+        $thirteenthRun = PayrollRun::query()
+            ->where('run_type', 'THIRTEENTH_MONTH')
+            ->whereHas('period', function ($q) use ($year) {
+                $q->where('payroll_year', $year);
+            })
+            ->first();
+
+        $rows = [];
+        $totBasicEarned = '0.00';
+        $totImported13th = '0.00';
+
+        foreach ($employees as $emp) {
+            // Sum basic salary from earning lines across periods of this year flagged for 13th-month base
+            $basicEarned = DB::table('payroll_lines')
+                ->join('payroll_runs', 'payroll_runs.payroll_run_id', '=', 'payroll_lines.payroll_run_id')
+                ->join('payroll_periods', 'payroll_periods.payroll_period_id', '=', 'payroll_runs.payroll_period_id')
+                ->join('earning_lines', 'earning_lines.payroll_line_id', '=', 'payroll_lines.payroll_line_id')
+                ->where('payroll_lines.employee_id', $emp->employee_id)
+                ->where('payroll_periods.payroll_year', $year)
+                ->where('earning_lines.is_taxable', true) // BR-12 base
+                ->where('payroll_runs.run_status', 'FINALIZED')
+                ->sum('earning_lines.amount');
+
+            $basicEarnedStr = number_format((float) ($basicEarned ?? 0.0), 2, '.', '');
+
+            // Figure from imported 13th month run (if exists)
+            $imported13th = '0.00';
+            if ($thirteenthRun) {
+                $thirteenthLine = $thirteenthRun->lines()
+                    ->where('employee_id', $emp->employee_id)
+                    ->first();
+                if ($thirteenthLine) {
+                    $imported13th = (string) $thirteenthLine->gross_pay;
+                }
+            }
+
+            $totBasicEarned = bcadd($totBasicEarned, $basicEarnedStr, 2);
+            $totImported13th = bcadd($totImported13th, $imported13th, 2);
+
+            $rows[] = [
+                'employee_no' => $emp->employee_no,
+                'employee_name' => $emp->fullName(),
+                'department' => $emp->currentEmploymentDetail?->department?->department_name ?? '—',
+                'basic_salary_earned' => $basicEarnedStr,
+                'imported_13th_month' => $imported13th,
+            ];
+        }
+
+        return [
+            'meta' => $this->getReportMeta('thirteenth_month'),
+            'payroll_year' => $year,
+            'rows' => $rows,
+            'is_provisional' => false,
+            'totals' => [
+                'employee_count' => count($rows),
+                'basic_salary_earned' => $totBasicEarned,
+                'imported_13th_month' => $totImported13th,
+            ],
+            'parameters' => [
+                'Calendar Year' => (string) $year,
+                'Department' => ! empty($params['department_id']) ? Department::find($params['department_id'])?->department_name : 'All Departments',
+            ],
+            'org' => OrganizationProfile::first(),
+        ];
+    }
+
+    /**
+     * 9. Leave Ledger Report (FR-5.3, Should).
+     */
+    public function generateLeaveLedger(array $params): array
+    {
+        $year = (int) ($params['payroll_year'] ?? date('Y'));
+
+        $query = DB::table('leave_balances')
+            ->join('employees', 'employees.employee_id', '=', 'leave_balances.employee_id')
+            ->join('leave_types', 'leave_types.leave_type_id', '=', 'leave_balances.leave_type_id')
+            ->where('leave_balances.payroll_year', $year)
+            ->select([
+                'employees.employee_no',
+                'employees.last_name',
+                'employees.first_name',
+                'leave_types.leave_name',
+                'leave_balances.credits_carried_over',
+                'leave_balances.credits_earned',
+                'leave_balances.credits_used',
+                'leave_balances.balance_remaining',
+            ])
+            ->orderBy('employees.employee_no')
+            ->orderBy('leave_types.leave_name');
+
+        if (! empty($params['employee_id'])) {
+            $query->where('leave_balances.employee_id', (int) $params['employee_id']);
+        }
+
+        $records = $query->get();
+
+        $rows = [];
+        $totEarned = 0.0;
+        $totUsed = 0.0;
+        $totRemaining = 0.0;
+
+        foreach ($records as $r) {
+            $earned = (float) $r->credits_earned + (float) $r->credits_carried_over;
+            $used = (float) $r->credits_used;
+            $remaining = (float) $r->balance_remaining;
+
+            $totEarned += $earned;
+            $totUsed += $used;
+            $totRemaining += $remaining;
+
+            $rows[] = [
+                'employee_no' => $r->employee_no,
+                'employee_name' => "{$r->last_name}, {$r->first_name}",
+                'leave_type' => $r->leave_name,
+                'credits_earned' => number_format($earned, 2),
+                'credits_used' => number_format($used, 2),
+                'balance_remaining' => number_format($remaining, 2),
+            ];
+        }
+
+        return [
+            'meta' => $this->getReportMeta('leave_ledger'),
+            'payroll_year' => $year,
+            'rows' => $rows,
+            'is_provisional' => false,
+            'totals' => [
+                'employee_count' => count($rows),
+                'credits_earned' => number_format($totEarned, 2),
+                'credits_used' => number_format($totUsed, 2),
+                'balance_remaining' => number_format($totRemaining, 2),
+            ],
+            'parameters' => [
+                'Year' => (string) $year,
+                'Employee' => ! empty($params['employee_id']) ? Employee::find($params['employee_id'])?->fullName() : 'All Employees',
+            ],
+            'org' => OrganizationProfile::first(),
+        ];
+    }
+
+    /**
+     * 10. Loan Ledger Report (FR-5.3, Should).
+     */
+    public function generateLoanLedger(array $params): array
+    {
+        $query = DB::table('loan_accounts')
+            ->join('employees', 'employees.employee_id', '=', 'loan_accounts.employee_id')
+            ->join('deduction_types', 'deduction_types.deduction_type_id', '=', 'loan_accounts.deduction_type_id')
+            ->select([
+                'employees.employee_no',
+                'employees.last_name',
+                'employees.first_name',
+                'deduction_types.deduction_name as loan_type',
+                'loan_accounts.loan_reference',
+                'loan_accounts.principal_amount',
+                'loan_accounts.amortization_amount',
+                'loan_accounts.outstanding_balance',
+                'loan_accounts.loan_status',
+            ])
+            ->orderBy('employees.employee_no');
+
+        if (! empty($params['employee_id'])) {
+            $query->where('loan_accounts.employee_id', (int) $params['employee_id']);
+        }
+
+        $records = $query->get();
+
+        $rows = [];
+        $totPrincipal = '0.00';
+        $totAmortization = '0.00';
+        $totOutstanding = '0.00';
+
+        foreach ($records as $r) {
+            $principal = (string) $r->principal_amount;
+            $amortization = (string) $r->amortization_amount;
+            $outstanding = (string) $r->outstanding_balance;
+            $deducted = bcsub($principal, $outstanding, 2);
+
+            $totPrincipal = bcadd($totPrincipal, $principal, 2);
+            $totAmortization = bcadd($totAmortization, $amortization, 2);
+            $totOutstanding = bcadd($totOutstanding, $outstanding, 2);
+
+            $rows[] = [
+                'employee_no' => $r->employee_no,
+                'employee_name' => "{$r->last_name}, {$r->first_name}",
+                'loan_type' => $r->loan_type,
+                'loan_reference' => $r->loan_reference,
+                'principal' => $principal,
+                'amortization' => $amortization,
+                'total_deducted' => $deducted,
+                'outstanding_balance' => $outstanding,
+                'status' => $r->loan_status,
+            ];
+        }
+
+        return [
+            'meta' => $this->getReportMeta('loan_ledger'),
+            'rows' => $rows,
+            'is_provisional' => false,
+            'totals' => [
+                'count' => count($rows),
+                'principal' => $totPrincipal,
+                'amortization' => $totAmortization,
+                'outstanding_balance' => $totOutstanding,
+            ],
+            'parameters' => [
+                'Employee' => ! empty($params['employee_id']) ? Employee::find($params['employee_id'])?->fullName() : 'All Employees',
+            ],
+            'org' => OrganizationProfile::first(),
+        ];
+    }
+
+    /**
+     * 11. Payroll Cost Comparison Report (FR-5.3, Could).
+     */
+    public function generateCostComparison(array $params): array
+    {
+        $run = $this->resolveRun($params);
+        $currentPeriod = $run->period;
+
+        // Find prior period chronologically
+        $priorPeriod = PayrollPeriod::query()
+            ->where('cutoff_end', '<', $currentPeriod->cutoff_start)
+            ->orderByDesc('cutoff_end')
+            ->first();
+
+        $priorRun = null;
+        if ($priorPeriod) {
+            $priorRun = PayrollRun::query()
+                ->where('payroll_period_id', $priorPeriod->payroll_period_id)
+                ->orderByDesc('payroll_run_id')
+                ->first();
+        }
+
+        // Aggregate current run by department
+        $currentDeptData = $this->aggregateRunByDepartment($run);
+        $priorDeptData = $priorRun ? $this->aggregateRunByDepartment($priorRun) : [];
+
+        $allDepts = array_unique(array_merge(array_keys($currentDeptData), array_keys($priorDeptData)));
+        sort($allDepts);
+
+        $rows = [];
+        $currTotGross = '0.00';
+        $priorTotGross = '0.00';
+        $currTotNet = '0.00';
+        $priorTotNet = '0.00';
+
+        foreach ($allDepts as $dept) {
+            $c = $currentDeptData[$dept] ?? ['headcount' => 0, 'gross' => '0.00', 'net' => '0.00'];
+            $p = $priorDeptData[$dept] ?? ['headcount' => 0, 'gross' => '0.00', 'net' => '0.00'];
+
+            $grossDiff = bcsub($c['gross'], $p['gross'], 2);
+            $netDiff = bcsub($c['net'], $p['net'], 2);
+
+            $grossPct = (float) $p['gross'] > 0 ? (((float) $grossDiff / (float) $p['gross']) * 100) : 0.0;
+
+            $currTotGross = bcadd($currTotGross, $c['gross'], 2);
+            $priorTotGross = bcadd($priorTotGross, $p['gross'], 2);
+            $currTotNet = bcadd($currTotNet, $c['net'], 2);
+            $priorTotNet = bcadd($priorTotNet, $p['net'], 2);
+
+            $rows[] = [
+                'department' => $dept,
+                'current_headcount' => $c['headcount'],
+                'prior_headcount' => $p['headcount'],
+                'current_gross' => $c['gross'],
+                'prior_gross' => $p['gross'],
+                'gross_variance' => $grossDiff,
+                'gross_variance_pct' => number_format($grossPct, 1),
+                'current_net' => $c['net'],
+                'prior_net' => $p['net'],
+                'net_variance' => $netDiff,
+            ];
+        }
+
+        $totGrossVariance = bcsub($currTotGross, $priorTotGross, 2);
+        $totGrossPct = (float) $priorTotGross > 0 ? (((float) $totGrossVariance / (float) $priorTotGross) * 100) : 0.0;
+
+        return [
+            'meta' => $this->getReportMeta('cost_comparison'),
+            'run' => $run,
+            'current_period' => $currentPeriod,
+            'prior_period' => $priorPeriod,
+            'rows' => $rows,
+            'is_provisional' => $run->run_status !== 'FINALIZED',
+            'totals' => [
+                'current_gross' => $currTotGross,
+                'prior_gross' => $priorTotGross,
+                'gross_variance' => $totGrossVariance,
+                'gross_variance_pct' => number_format($totGrossPct, 1),
+                'current_net' => $currTotNet,
+                'prior_net' => $priorTotNet,
+                'net_variance' => bcsub($currTotNet, $priorTotNet, 2),
+            ],
+            'parameters' => [
+                'Current Period' => "{$currentPeriod->payroll_year}-{$currentPeriod->period_no}",
+                'Comparison Period' => $priorPeriod ? "{$priorPeriod->payroll_year}-{$priorPeriod->period_no}" : 'None available',
+            ],
+            'org' => OrganizationProfile::first(),
+        ];
+    }
+
+    /**
+     * Aggregate payroll run metrics by department.
+     *
+     * @return array<string, array{headcount: int, gross: string, net: string}>
+     */
+    protected function aggregateRunByDepartment(PayrollRun $run): array
+    {
+        $currentImport = $run->currentImport();
+        if (! $currentImport) {
+            return [];
+        }
+
+        $lines = $run->lines()
+            ->where('payroll_import_id', $currentImport->payroll_import_id)
+            ->with(['employee.employmentDetails.department'])
+            ->get();
+
+        $data = [];
+        foreach ($lines as $l) {
+            $dept = $l->employee->currentEmploymentDetail?->department?->department_name ?? 'Unassigned';
+            if (! isset($data[$dept])) {
+                $data[$dept] = ['headcount' => 0, 'gross' => '0.00', 'net' => '0.00'];
+            }
+            $data[$dept]['headcount']++;
+            $data[$dept]['gross'] = bcadd($data[$dept]['gross'], (string) $l->gross_pay, 2);
+            $data[$dept]['net'] = bcadd($data[$dept]['net'], (string) $l->net_pay, 2);
+        }
+
+        return $data;
     }
 
     /**

@@ -17,7 +17,9 @@ use App\Services\PayrollRunService;
 use Database\Seeders\DeductionTypeSeeder;
 use Database\Seeders\EarningTypeSeeder;
 use Database\Seeders\ImportColumnMapSeeder;
+use Database\Seeders\LeaveTypeSeeder;
 use Database\Seeders\RoleSeeder;
+use Database\Seeders\StatutoryScheduleSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Tests\TestCase;
@@ -39,6 +41,8 @@ class ReportCatalogueTest extends TestCase
         $this->seed(EarningTypeSeeder::class);
         $this->seed(DeductionTypeSeeder::class);
         $this->seed(ImportColumnMapSeeder::class);
+        $this->seed(LeaveTypeSeeder::class);
+        $this->seed(StatutoryScheduleSeeder::class);
     }
 
     private function officer(): User
@@ -236,5 +240,139 @@ class ReportCatalogueTest extends TestCase
             ->where('entity_name', 'Report')
             ->count();
         $this->assertGreaterThanOrEqual(2, $auditCount);
+    }
+
+    public function test_sss_remittance_report_generation_and_derivation_label(): void
+    {
+        $officer = $this->officer();
+        $run = $this->setupRunWithImport($officer);
+
+        $response = $this->actingAs($officer)->post('/reports/sss_remittance/generate', [
+            'payroll_period_id' => $run->payroll_period_id,
+        ]);
+
+        $response->assertOk();
+        $response->assertSee('SSS Remittance Report');
+        $response->assertSee('TOTAL REMITTANCE');
+        // Check share source label present (AC-2.3.4)
+        $this->assertTrue(
+            str_contains($response->getContent(), 'Imported') ||
+            str_contains($response->getContent(), 'Derived')
+        );
+    }
+
+    public function test_philhealth_remittance_report_generation(): void
+    {
+        $officer = $this->officer();
+        $run = $this->setupRunWithImport($officer);
+
+        $response = $this->actingAs($officer)->post('/reports/philhealth_remittance/generate', [
+            'payroll_period_id' => $run->payroll_period_id,
+        ]);
+
+        $response->assertOk();
+        $response->assertSee('PhilHealth Remittance Report');
+        $response->assertSee('TOTAL REMITTANCE');
+    }
+
+    public function test_pagibig_remittance_report_generation(): void
+    {
+        $officer = $this->officer();
+        $run = $this->setupRunWithImport($officer);
+
+        $response = $this->actingAs($officer)->post('/reports/pagibig_remittance/generate', [
+            'payroll_period_id' => $run->payroll_period_id,
+        ]);
+
+        $response->assertOk();
+        $response->assertSee('Pag-IBIG Remittance Report');
+        $response->assertSee('TOTAL REMITTANCE');
+    }
+
+    public function test_withholding_tax_report_generation(): void
+    {
+        $officer = $this->officer();
+        $run = $this->setupRunWithImport($officer);
+
+        $response = $this->actingAs($officer)->post('/reports/withholding_tax/generate', [
+            'payroll_period_id' => $run->payroll_period_id,
+        ]);
+
+        $response->assertOk();
+        $response->assertSee('Withholding Tax Report (BIR)');
+        $response->assertSee('Tax withheld');
+    }
+
+    public function test_bank_transmittal_report_generation_standard_commercial_format(): void
+    {
+        $officer = $this->officer();
+        $run = $this->setupRunWithImport($officer);
+
+        $response = $this->actingAs($officer)->post('/reports/bank_transmittal/generate', [
+            'payroll_period_id' => $run->payroll_period_id,
+        ]);
+
+        $response->assertOk();
+        $response->assertSee('Bank Transmittal Listing');
+        $response->assertSee('TOTAL TRANSMITTAL');
+        $response->assertSee('Disbursing Bank');
+    }
+
+    public function test_thirteenth_month_report_generation(): void
+    {
+        $officer = $this->officer();
+        $run = $this->setupRunWithImport($officer);
+
+        $response = $this->actingAs($officer)->post('/reports/thirteenth_month/generate', [
+            'payroll_year' => 2026,
+        ]);
+
+        $response->assertOk();
+        $response->assertSee('13th Month Pay Report');
+        $response->assertSee('Annual basic salary base');
+        $response->assertSee('Imported 13th-month figure');
+    }
+
+    public function test_leave_and_loan_ledgers_and_cost_comparison_generation(): void
+    {
+        $officer = $this->officer();
+        $run = $this->setupRunWithImport($officer);
+
+        // Leave ledger
+        $respLeave = $this->actingAs($officer)->post('/reports/leave_ledger/generate', [
+            'payroll_year' => 2026,
+        ]);
+        $respLeave->assertOk();
+        $respLeave->assertSee('Leave Ledger');
+
+        // Loan ledger
+        $respLoan = $this->actingAs($officer)->post('/reports/loan_ledger/generate', [
+            'payroll_year' => 2026,
+        ]);
+        $respLoan->assertOk();
+        $respLoan->assertSee('Loan Ledger');
+
+        // Cost comparison
+        $respCost = $this->actingAs($officer)->post('/reports/cost_comparison/generate', [
+            'payroll_period_id' => $run->payroll_period_id,
+        ]);
+        $respCost->assertOk();
+        $respCost->assertSee('Payroll Cost Comparison');
+    }
+
+    public function test_statutory_remittance_exports_to_pdf_and_excel(): void
+    {
+        $officer = $this->officer();
+        $run = $this->setupRunWithImport($officer);
+
+        foreach (['sss_remittance', 'philhealth_remittance', 'pagibig_remittance'] as $type) {
+            $respPdf = $this->actingAs($officer)->get("/reports/{$type}/export/pdf?payroll_period_id={$run->payroll_period_id}");
+            $respPdf->assertOk();
+            $this->assertEquals('application/pdf', $respPdf->headers->get('Content-Type'));
+
+            $respExcel = $this->actingAs($officer)->get("/reports/{$type}/export/excel?payroll_period_id={$run->payroll_period_id}");
+            $respExcel->assertOk();
+            $this->assertStringContainsString('spreadsheetml', $respExcel->headers->get('Content-Type'));
+        }
     }
 }

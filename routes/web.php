@@ -4,10 +4,12 @@ use App\Http\Controllers\AttendanceImportController;
 use App\Http\Controllers\AuditLogController;
 use App\Http\Controllers\Auth\PasswordChangeController;
 use App\Http\Controllers\Auth\SessionController;
+use App\Http\Controllers\BackupController;
 use App\Http\Controllers\CompensationProfileController;
 use App\Http\Controllers\EmployeeController;
 use App\Http\Controllers\ExceptionReportController;
 use App\Http\Controllers\ImportColumnMapController;
+use App\Http\Controllers\IntegrityVerificationController;
 use App\Http\Controllers\OrganizationProfileController;
 use App\Http\Controllers\PayrollImportController;
 use App\Http\Controllers\PayrollRecordSearchController;
@@ -16,6 +18,7 @@ use App\Http\Controllers\PayrollRunController;
 use App\Http\Controllers\PayslipController;
 use App\Http\Controllers\ReferenceDataController;
 use App\Http\Controllers\ReportController;
+use App\Http\Controllers\StatutoryScheduleController;
 use App\Http\Controllers\UserController;
 use App\Services\AuthorizationService;
 use Illuminate\Support\Facades\Auth;
@@ -194,4 +197,25 @@ Route::middleware(['auth', 'session.idle', 'password.changed'])->group(function 
     Route::post('/reports/{reportType}/generate', [ReportController::class, 'generate'])->name('reports.generate');
     Route::get('/reports/{reportType}/export/pdf', [ReportController::class, 'exportPdf'])->name('reports.export.pdf');
     Route::get('/reports/{reportType}/export/excel', [ReportController::class, 'exportExcel'])->name('reports.export.excel');
+
+    // UC-05 · Maintain statutory schedules — FR-2.3 ('statutory_tables.view' / 'statutory_tables.manage').
+    Route::get('/statutory-schedules', [StatutoryScheduleController::class, 'index'])->name('statutory-schedules.index');
+    Route::get('/statutory-schedules/create', [StatutoryScheduleController::class, 'create'])->name('statutory-schedules.create');
+    Route::post('/statutory-schedules', [StatutoryScheduleController::class, 'store'])->name('statutory-schedules.store');
+    Route::get('/statutory-schedules/{statutorySchedule}', [StatutoryScheduleController::class, 'show'])->name('statutory-schedules.show');
+    Route::get('/statutory-schedules/{statutorySchedule}/edit', [StatutoryScheduleController::class, 'edit'])->name('statutory-schedules.edit');
+    Route::put('/statutory-schedules/{statutorySchedule}', [StatutoryScheduleController::class, 'update'])->name('statutory-schedules.update');
+    Route::post('/statutory-schedules/{statutorySchedule}/end-date', [StatutoryScheduleController::class, 'endDate'])->name('statutory-schedules.end-date');
+
+    // UC-07 · Back up and restore database — NFR-5.4 ('backup.run_restore').
+    Route::get('/backups', [BackupController::class, 'index'])->name('backups.index');
+    Route::post('/backups', [BackupController::class, 'store'])->name('backups.store');
+    Route::get('/backups/{filename}/download', [BackupController::class, 'download'])->name('backups.download');
+    Route::post('/backups/restore', [BackupController::class, 'restore'])->name('backups.restore');
+
+    // UC-31 · Verify payroll record integrity — FR-6.3 ('integrity.verify').
+    Route::get('/integrity', [IntegrityVerificationController::class, 'index'])->name('integrity.index');
+    Route::post('/integrity/verify/{payrollRun}', [IntegrityVerificationController::class, 'verify'])->name('integrity.verify-run');
+    Route::post('/integrity/{payrollRun}/verify', [IntegrityVerificationController::class, 'verify']);
+    Route::get('/integrity/{payrollRun}', [IntegrityVerificationController::class, 'show'])->name('integrity.show');
 });

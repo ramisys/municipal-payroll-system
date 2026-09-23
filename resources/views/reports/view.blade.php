@@ -25,7 +25,7 @@
     </x-page-header>
 
     {{-- Provisional watermark banner if unfinalized (AC-5.3.5) --}}
-    @if ($data['is_provisional'])
+    @if (! empty($data['is_provisional']))
         <div class="mb-6 p-4 rounded-lg bg-amber-50 border-2 border-amber-300 text-amber-900 flex items-start gap-3">
             <span class="inline-flex items-center justify-center px-2 py-1 rounded bg-amber-200 text-amber-900 font-bold text-xs uppercase tracking-wider">
                 PROVISIONAL
@@ -34,7 +34,7 @@
                 <p class="font-semibold text-sm">Provisional Report (AC-5.3.5)</p>
                 <p class="text-xs mt-0.5">
                     This report reflects payroll run #{{ $data['run']->payroll_run_id }} which is currently in <strong>{{ $data['run']->run_status }}</strong> status.
-                    Official payslips and statutory remittances can only be finalized from a Finalized payroll run.
+                    Official statutory remittances and financial transmittals can only be finalized from a Finalized payroll run.
                 </p>
             </div>
         </div>
@@ -53,19 +53,24 @@
             </div>
         </div>
 
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
             @foreach ($data['parameters'] as $label => $val)
                 <div>
                     <span class="text-ink-muted font-medium">{{ $label }}:</span>
                     <span class="text-ink ml-1 font-semibold">{{ $val }}</span>
                 </div>
             @endforeach
+            @if (! empty($data['employer_agency_id']))
+                <div>
+                    <span class="text-ink-muted font-medium">Employer ID:</span>
+                    <span class="text-ink ml-1 font-semibold tabular">{{ $data['employer_agency_id'] }}</span>
+                </div>
+            @endif
         </div>
     </x-card>
 
-    {{-- Report Content --}}
+    {{-- 1. Payroll Register --}}
     @if ($reportType === 'payroll_register')
-        {{-- Summary Stats --}}
         <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
             <x-stat label="Employee headcount" :value="$data['totals']['employee_count']" />
             <x-stat label="Total gross pay" :value="'₱' . number_format((float) $data['totals']['gross_pay'], 2)" />
@@ -107,8 +112,9 @@
                 </tr>
             </x-table>
         </x-card>
+
+    {{-- 2. Payroll Summary --}}
     @elseif ($reportType === 'payroll_summary')
-        {{-- Department Summaries --}}
         <div class="mb-6">
             <h3 class="text-sm font-semibold text-ink mb-2">Department Totals</h3>
             <x-card :flush="true">
@@ -140,7 +146,6 @@
             </x-card>
         </div>
 
-        {{-- Categories --}}
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             <x-card title="Earning categories" :flush="true">
                 <x-table>
@@ -148,10 +153,10 @@
                         <th>Category</th>
                         <th class="num">Amount</th>
                     </x-slot:head>
-                    @foreach ($data['earning_totals'] as $name => $amt)
+                    @foreach ($data['earning_totals'] as $cat => $amt)
                         <tr>
-                            <td class="font-medium text-ink">{{ $name }}</td>
-                            <td class="num tabular font-mono">₱{{ number_format((float) $amt, 2) }}</td>
+                            <td class="text-xs font-medium text-ink">{{ $cat }}</td>
+                            <td class="num tabular font-mono text-xs">₱{{ number_format((float) $amt, 2) }}</td>
                         </tr>
                     @endforeach
                 </x-table>
@@ -163,14 +168,313 @@
                         <th>Category</th>
                         <th class="num">Amount</th>
                     </x-slot:head>
-                    @foreach ($data['deduction_totals'] as $name => $amt)
+                    @foreach ($data['deduction_totals'] as $cat => $amt)
                         <tr>
-                            <td class="font-medium text-ink">{{ $name }}</td>
-                            <td class="num tabular font-mono text-amber-700">₱{{ number_format((float) $amt, 2) }}</td>
+                            <td class="text-xs font-medium text-ink">{{ $cat }}</td>
+                            <td class="num tabular font-mono text-xs text-amber-700">₱{{ number_format((float) $amt, 2) }}</td>
                         </tr>
                     @endforeach
                 </x-table>
             </x-card>
         </div>
+
+    {{-- 3, 4, 5. Statutory Remittance Reports (SSS, PhilHealth, Pag-IBIG) --}}
+    @elseif (in_array($reportType, ['sss_remittance', 'philhealth_remittance', 'pagibig_remittance'], true))
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
+            <x-stat label="Covered employees" :value="$data['totals']['employee_count']" />
+            <x-stat label="Employee contributions" :value="'₱' . number_format((float) $data['totals']['employee_share'], 2)" />
+            <x-stat label="Employer share" :value="'₱' . number_format((float) $data['totals']['employer_share'], 2)" />
+            <x-stat label="Total remittance" :value="'₱' . number_format((float) $data['totals']['total_contribution'], 2)" />
+        </div>
+
+        <x-card :flush="true">
+            <x-table>
+                <x-slot:head>
+                    <th>Employee No</th>
+                    <th>Employee Name</th>
+                    <th>{{ $reportType === 'sss_remittance' ? 'SSS Number' : ($reportType === 'philhealth_remittance' ? 'PhilHealth No' : 'Pag-IBIG MID') }}</th>
+                    <th>Department</th>
+                    <th class="num">Employee share (Imported)</th>
+                    <th class="num">Employer share</th>
+                    <th class="num">Total</th>
+                    <th>Share source (AC-2.3.4)</th>
+                </x-slot:head>
+                @foreach ($data['rows'] as $r)
+                    <tr>
+                        <td class="tabular font-medium text-xs">{{ $r['employee_no'] }}</td>
+                        <td class="font-medium text-ink">{{ $r['employee_name'] }}</td>
+                        <td class="tabular text-xs font-mono">{{ $r['id_number'] }}</td>
+                        <td class="text-xs text-ink-muted">{{ $r['department'] }}</td>
+                        <td class="num tabular font-mono text-xs">₱{{ number_format((float) $r['employee_share'], 2) }}</td>
+                        <td class="num tabular font-mono text-xs font-semibold text-brand-900">₱{{ number_format((float) $r['employer_share'], 2) }}</td>
+                        <td class="num tabular font-mono text-xs font-semibold text-emerald-700">₱{{ number_format((float) $r['total_contribution'], 2) }}</td>
+                        <td>
+                            @if ($r['source'] === 'IMPORTED')
+                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-2xs font-semibold bg-slate-100 text-slate-700">
+                                    Imported
+                                </span>
+                            @elseif ($r['source'] === 'DERIVED')
+                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-2xs font-semibold bg-blue-100 text-blue-800" title="Derived from {{ $r['schedule_version'] }}">
+                                    Derived ({{ $r['schedule_version'] }})
+                                </span>
+                            @else
+                                <span class="inline-flex items-center px-1.5 py-0.5 rounded text-2xs font-semibold bg-rose-100 text-rose-800">
+                                    No schedule
+                                </span>
+                            @endif
+                        </td>
+                    </tr>
+                @endforeach
+                <tr class="bg-slate-50 font-bold">
+                    <td colspan="4" class="text-ink">TOTAL REMITTANCE (AC-5.3.2 Reconciled)</td>
+                    <td class="num tabular font-mono text-xs text-ink">₱{{ number_format((float) $data['totals']['employee_share'], 2) }}</td>
+                    <td class="num tabular font-mono text-xs text-brand-900">₱{{ number_format((float) $data['totals']['employer_share'], 2) }}</td>
+                    <td class="num tabular font-mono text-xs text-emerald-700">₱{{ number_format((float) $data['totals']['total_contribution'], 2) }}</td>
+                    <td></td>
+                </tr>
+            </x-table>
+        </x-card>
+
+    {{-- 6. Withholding Tax Report --}}
+    @elseif ($reportType === 'withholding_tax')
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <x-stat label="Employees included" :value="$data['totals']['employee_count']" />
+            <x-stat label="Taxable compensation" :value="'₱' . number_format((float) $data['totals']['taxable_compensation'], 2)" />
+            <x-stat label="Total tax withheld" :value="'₱' . number_format((float) $data['totals']['tax_withheld'], 2)" />
+        </div>
+
+        <x-card :flush="true">
+            <x-table>
+                <x-slot:head>
+                    <th>Employee No</th>
+                    <th>Employee Name</th>
+                    <th>TIN</th>
+                    <th>Department</th>
+                    <th class="num">Taxable compensation</th>
+                    <th class="num">Tax withheld (Imported)</th>
+                </x-slot:head>
+                @foreach ($data['rows'] as $r)
+                    <tr>
+                        <td class="tabular font-medium text-xs">{{ $r['employee_no'] }}</td>
+                        <td class="font-medium text-ink">{{ $r['employee_name'] }}</td>
+                        <td class="tabular text-xs font-mono">{{ $r['tin_no'] }}</td>
+                        <td class="text-xs text-ink-muted">{{ $r['department'] }}</td>
+                        <td class="num tabular font-mono text-xs">₱{{ number_format((float) $r['taxable_compensation'], 2) }}</td>
+                        <td class="num tabular font-mono text-xs font-semibold text-rose-700">₱{{ number_format((float) $r['tax_withheld'], 2) }}</td>
+                    </tr>
+                @endforeach
+                <tr class="bg-slate-50 font-bold">
+                    <td colspan="4" class="text-ink">TOTALS</td>
+                    <td class="num tabular font-mono text-xs text-ink">₱{{ number_format((float) $data['totals']['taxable_compensation'], 2) }}</td>
+                    <td class="num tabular font-mono text-xs text-rose-700">₱{{ number_format((float) $data['totals']['tax_withheld'], 2) }}</td>
+                </tr>
+            </x-table>
+        </x-card>
+
+    {{-- 7. Bank Transmittal --}}
+    @elseif ($reportType === 'bank_transmittal')
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 max-w-lg">
+            <x-stat label="Account count" :value="$data['totals']['employee_count']" />
+            <x-stat label="Total disbursement" :value="'₱' . number_format((float) $data['totals']['net_pay'], 2)" />
+        </div>
+
+        <x-card :flush="true">
+            <x-table>
+                <x-slot:head>
+                    <th>Employee No</th>
+                    <th>Account Holder Name</th>
+                    <th>Disbursing Bank</th>
+                    <th>Account Number</th>
+                    <th class="num">Net pay amount</th>
+                </x-slot:head>
+                @foreach ($data['rows'] as $r)
+                    <tr>
+                        <td class="tabular font-medium text-xs">{{ $r['employee_no'] }}</td>
+                        <td class="font-medium text-ink">{{ $r['employee_name'] }}</td>
+                        <td class="text-xs text-ink-muted">{{ $r['bank_name'] }}</td>
+                        <td class="tabular text-xs font-mono">{{ $r['bank_account_no'] }}</td>
+                        <td class="num tabular font-mono text-xs font-semibold text-emerald-700">₱{{ number_format((float) $r['net_pay'], 2) }}</td>
+                    </tr>
+                @endforeach
+                <tr class="bg-slate-50 font-bold">
+                    <td colspan="4" class="text-ink">TOTAL TRANSMITTAL</td>
+                    <td class="num tabular font-mono text-xs text-emerald-700">₱{{ number_format((float) $data['totals']['net_pay'], 2) }}</td>
+                </tr>
+            </x-table>
+        </x-card>
+
+    {{-- 8. 13th Month Pay Report --}}
+    @elseif ($reportType === 'thirteenth_month')
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <x-stat label="Employees included" :value="$data['totals']['employee_count']" />
+            <x-stat label="Annual basic salary base" :value="'₱' . number_format((float) $data['totals']['basic_salary_earned'], 2)" />
+            <x-stat label="Imported 13th-month total" :value="'₱' . number_format((float) $data['totals']['imported_13th_month'], 2)" />
+        </div>
+
+        <x-card :flush="true">
+            <x-table>
+                <x-slot:head>
+                    <th>Employee No</th>
+                    <th>Employee Name</th>
+                    <th>Department</th>
+                    <th class="num">Annual basic salary base (BR-12)</th>
+                    <th class="num">Imported 13th-month figure (OI-14)</th>
+                </x-slot:head>
+                @foreach ($data['rows'] as $r)
+                    <tr>
+                        <td class="tabular font-medium text-xs">{{ $r['employee_no'] }}</td>
+                        <td class="font-medium text-ink">{{ $r['employee_name'] }}</td>
+                        <td class="text-xs text-ink-muted">{{ $r['department'] }}</td>
+                        <td class="num tabular font-mono text-xs">₱{{ number_format((float) $r['basic_salary_earned'], 2) }}</td>
+                        <td class="num tabular font-mono text-xs font-semibold text-emerald-700">₱{{ number_format((float) $r['imported_13th_month'], 2) }}</td>
+                    </tr>
+                @endforeach
+                <tr class="bg-slate-50 font-bold">
+                    <td colspan="3" class="text-ink">TOTALS</td>
+                    <td class="num tabular font-mono text-xs text-ink">₱{{ number_format((float) $data['totals']['basic_salary_earned'], 2) }}</td>
+                    <td class="num tabular font-mono text-xs text-emerald-700">₱{{ number_format((float) $data['totals']['imported_13th_month'], 2) }}</td>
+                </tr>
+            </x-table>
+        </x-card>
+
+    {{-- 9. Leave Ledger --}}
+    @elseif ($reportType === 'leave_ledger')
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <x-stat label="Total credits earned" :value="number_format((float) $data['totals']['credits_earned'], 2)" />
+            <x-stat label="Total credits used" :value="number_format((float) $data['totals']['credits_used'], 2)" />
+            <x-stat label="Total balance remaining" :value="number_format((float) $data['totals']['balance_remaining'], 2)" />
+        </div>
+
+        <x-card :flush="true">
+            <x-table>
+                <x-slot:head>
+                    <th>Employee No</th>
+                    <th>Employee Name</th>
+                    <th>Leave Type</th>
+                    <th class="num">Earned / Carried</th>
+                    <th class="num">Credits Used</th>
+                    <th class="num">Balance Remaining</th>
+                </x-slot:head>
+                @forelse ($data['rows'] as $r)
+                    <tr>
+                        <td class="tabular font-medium text-xs">{{ $r['employee_no'] }}</td>
+                        <td class="font-medium text-ink">{{ $r['employee_name'] }}</td>
+                        <td class="text-xs text-ink">{{ $r['leave_type'] }}</td>
+                        <td class="num tabular font-mono text-xs">{{ $r['credits_earned'] }}</td>
+                        <td class="num tabular font-mono text-xs text-amber-700">{{ $r['credits_used'] }}</td>
+                        <td class="num tabular font-mono text-xs font-semibold text-emerald-700">{{ $r['balance_remaining'] }}</td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="6" class="p-6 text-center text-ink-muted text-sm">
+                            No leave balance records found for the selected parameters.
+                        </td>
+                    </tr>
+                @endforelse
+            </x-table>
+        </x-card>
+
+    {{-- 10. Loan Ledger --}}
+    @elseif ($reportType === 'loan_ledger')
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+            <x-stat label="Total principal" :value="'₱' . number_format((float) $data['totals']['principal'], 2)" />
+            <x-stat label="Total monthly amortization" :value="'₱' . number_format((float) $data['totals']['amortization'], 2)" />
+            <x-stat label="Total outstanding balance" :value="'₱' . number_format((float) $data['totals']['outstanding_balance'], 2)" />
+        </div>
+
+        <x-card :flush="true">
+            <x-table>
+                <x-slot:head>
+                    <th>Employee No</th>
+                    <th>Employee Name</th>
+                    <th>Loan Type</th>
+                    <th>Reference</th>
+                    <th class="num">Principal</th>
+                    <th class="num">Amortization</th>
+                    <th class="num">Total Deducted</th>
+                    <th class="num">Outstanding Balance</th>
+                    <th>Status</th>
+                </x-slot:head>
+                @forelse ($data['rows'] as $r)
+                    <tr>
+                        <td class="tabular font-medium text-xs">{{ $r['employee_no'] }}</td>
+                        <td class="font-medium text-ink">{{ $r['employee_name'] }}</td>
+                        <td class="text-xs text-ink">{{ $r['loan_type'] }}</td>
+                        <td class="tabular text-xs font-mono text-ink-muted">{{ $r['loan_reference'] }}</td>
+                        <td class="num tabular font-mono text-xs">₱{{ number_format((float) $r['principal'], 2) }}</td>
+                        <td class="num tabular font-mono text-xs">₱{{ number_format((float) $r['amortization'], 2) }}</td>
+                        <td class="num tabular font-mono text-xs text-amber-700">₱{{ number_format((float) $r['total_deducted'], 2) }}</td>
+                        <td class="num tabular font-mono text-xs font-semibold text-rose-700">₱{{ number_format((float) $r['outstanding_balance'], 2) }}</td>
+                        <td>
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-2xs font-semibold {{ $r['status'] === 'ACTIVE' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700' }}">
+                                {{ $r['status'] }}
+                            </span>
+                        </td>
+                    </tr>
+                @empty
+                    <tr>
+                        <td colspan="9" class="p-6 text-center text-ink-muted text-sm">
+                            No loan account records found for the selected parameters.
+                        </td>
+                    </tr>
+                @endforelse
+            </x-table>
+        </x-card>
+
+    {{-- 11. Cost Comparison --}}
+    @elseif ($reportType === 'cost_comparison')
+        <div class="grid grid-cols-1 sm:grid-cols-4 gap-4 mb-6">
+            <x-stat label="Current gross pay" :value="'₱' . number_format((float) $data['totals']['current_gross'], 2)" />
+            <x-stat label="Prior gross pay" :value="'₱' . number_format((float) $data['totals']['prior_gross'], 2)" />
+            <x-stat label="Gross movement" :value="'₱' . number_format((float) $data['totals']['gross_variance'], 2)" />
+            <x-stat label="Movement percentage" :value="$data['totals']['gross_variance_pct'] . '%'" />
+        </div>
+
+        <x-card :flush="true">
+            <x-table>
+                <x-slot:head>
+                    <th>Department</th>
+                    <th class="num">Current Headcount</th>
+                    <th class="num">Prior Headcount</th>
+                    <th class="num">Current Gross</th>
+                    <th class="num">Prior Gross</th>
+                    <th class="num">Gross Variance</th>
+                    <th class="num">Variance %</th>
+                    <th class="num">Current Net</th>
+                    <th class="num">Prior Net</th>
+                </x-slot:head>
+                @foreach ($data['rows'] as $r)
+                    @php
+                        $isHigher = (float) $r['gross_variance'] > 0;
+                        $isLower = (float) $r['gross_variance'] < 0;
+                    @endphp
+                    <tr>
+                        <td class="font-medium text-ink">{{ $r['department'] }}</td>
+                        <td class="num tabular text-xs">{{ $r['current_headcount'] }}</td>
+                        <td class="num tabular text-xs text-ink-muted">{{ $r['prior_headcount'] }}</td>
+                        <td class="num tabular font-mono text-xs">₱{{ number_format((float) $r['current_gross'], 2) }}</td>
+                        <td class="num tabular font-mono text-xs text-ink-muted">₱{{ number_format((float) $r['prior_gross'], 2) }}</td>
+                        <td class="num tabular font-mono text-xs font-semibold {{ $isHigher ? 'text-amber-700' : ($isLower ? 'text-emerald-700' : 'text-ink-muted') }}">
+                            {{ (float) $r['gross_variance'] >= 0 ? '+' : '' }}₱{{ number_format((float) $r['gross_variance'], 2) }}
+                        </td>
+                        <td class="num tabular text-xs font-medium {{ $isHigher ? 'text-amber-700' : ($isLower ? 'text-emerald-700' : 'text-ink-muted') }}">
+                            {{ (float) $r['gross_variance'] >= 0 ? '+' : '' }}{{ $r['gross_variance_pct'] }}%
+                        </td>
+                        <td class="num tabular font-mono text-xs font-semibold text-emerald-700">₱{{ number_format((float) $r['current_net'], 2) }}</td>
+                        <td class="num tabular font-mono text-xs text-ink-muted">₱{{ number_format((float) $r['prior_net'], 2) }}</td>
+                    </tr>
+                @endforeach
+                <tr class="bg-slate-50 font-bold">
+                    <td class="text-ink">TOTALS</td>
+                    <td colspan="2"></td>
+                    <td class="num tabular font-mono text-xs text-ink">₱{{ number_format((float) $data['totals']['current_gross'], 2) }}</td>
+                    <td class="num tabular font-mono text-xs text-ink-muted">₱{{ number_format((float) $data['totals']['prior_gross'], 2) }}</td>
+                    <td class="num tabular font-mono text-xs text-ink">₱{{ number_format((float) $data['totals']['gross_variance'], 2) }}</td>
+                    <td class="num tabular text-xs text-ink">{{ $data['totals']['gross_variance_pct'] }}%</td>
+                    <td class="num tabular font-mono text-xs text-emerald-700">₱{{ number_format((float) $data['totals']['current_net'], 2) }}</td>
+                    <td class="num tabular font-mono text-xs text-ink-muted">₱{{ number_format((float) $data['totals']['prior_net'], 2) }}</td>
+                </tr>
+            </x-table>
+        </x-card>
     @endif
 @endsection

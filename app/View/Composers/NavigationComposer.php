@@ -42,6 +42,9 @@ class NavigationComposer
                 'auditLog' => $this->authorizationService->can($user, 'audit_log.view'),
                 'organization' => $this->authorizationService->can($user, 'organization.manage'),
                 'referenceData' => $this->authorizationService->can($user, 'reference_data.manage'),
+                'statutorySchedules' => $this->authorizationService->can($user, 'statutory_tables.view') || $this->authorizationService->can($user, 'statutory_tables.manage'),
+                'backups' => $this->authorizationService->can($user, 'backup.run_restore'),
+                'integrity' => $this->authorizationService->can($user, 'integrity.verify'),
             ],
         ]);
     }

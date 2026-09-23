@@ -10,10 +10,12 @@ use App\Http\Controllers\ExceptionReportController;
 use App\Http\Controllers\ImportColumnMapController;
 use App\Http\Controllers\OrganizationProfileController;
 use App\Http\Controllers\PayrollImportController;
+use App\Http\Controllers\PayrollRecordSearchController;
 use App\Http\Controllers\PayrollRegisterController;
 use App\Http\Controllers\PayrollRunController;
 use App\Http\Controllers\PayslipController;
 use App\Http\Controllers\ReferenceDataController;
+use App\Http\Controllers\ReportController;
 use App\Http\Controllers\UserController;
 use App\Services\AuthorizationService;
 use Illuminate\Support\Facades\Auth;
@@ -178,4 +180,18 @@ Route::middleware(['auth', 'session.idle', 'password.changed'])->group(function 
     // UC-28 · Reprint payslip — FR-3.4 ('payslips.reprint'; PO, Approver, Admin, Viewer-read).
     Route::get('/payroll-runs/{payrollRun}/payslips/{employee}/pdf', [PayslipController::class, 'pdf'])->name('payslips.pdf');
     Route::post('/payroll-runs/{payrollRun}/payslips/{employee}/reprint', [PayslipController::class, 'reprint'])->name('payslips.reprint');
+
+    // UC-29 · Search payroll records — FR-5.2 ('payroll_records.search').
+    Route::get('/payroll-records', [PayrollRecordSearchController::class, 'index'])->name('payroll-records.index');
+    Route::get('/payroll-records/export/pdf', [PayrollRecordSearchController::class, 'exportPdf'])->name('payroll-records.export.pdf');
+    Route::get('/payroll-records/export/excel', [PayrollRecordSearchController::class, 'exportExcel'])->name('payroll-records.export.excel');
+    Route::get('/payroll-records/{payrollLine}', [PayrollRecordSearchController::class, 'show'])->whereNumber('payrollLine')->name('payroll-records.show');
+    Route::get('/employees/{employee}/payroll-history', [PayrollRecordSearchController::class, 'employeeHistory'])->whereNumber('employee')->name('employees.payroll-history');
+
+    // UC-30 · Generate report — FR-5.3 ('reports.generate').
+    Route::get('/reports', [ReportController::class, 'index'])->name('reports.index');
+    Route::get('/reports/{reportType}', [ReportController::class, 'show'])->name('reports.show');
+    Route::post('/reports/{reportType}/generate', [ReportController::class, 'generate'])->name('reports.generate');
+    Route::get('/reports/{reportType}/export/pdf', [ReportController::class, 'exportPdf'])->name('reports.export.pdf');
+    Route::get('/reports/{reportType}/export/excel', [ReportController::class, 'exportExcel'])->name('reports.export.excel');
 });

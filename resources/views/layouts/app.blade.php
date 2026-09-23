@@ -19,6 +19,8 @@
             'label' => 'Records',
             'items' => [
                 ['route' => 'employees.index', 'label' => 'Employees', 'show' => $navCan['employees'], 'match' => 'employees.*'],
+                ['route' => 'payroll-records.index', 'label' => 'Search records', 'show' => $navCan['payrollRecords'], 'match' => 'payroll-records.*'],
+                ['route' => 'reports.index', 'label' => 'Reports', 'show' => $navCan['reports'], 'match' => 'reports.*'],
             ],
         ],
         [
@@ -43,6 +45,8 @@
         'payroll-runs.index' => 'M4 4h16v4H4V4Zm0 6h16v10H4V10Zm3 3h5m-5 3h8',
         'attendance-import.create' => 'M12 3v12m0 0-4-4m4 4 4-4M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2',
         'employees.index' => 'M16 19v-1a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v1M9.5 10a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Zm11.5 9v-1a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75',
+        'payroll-records.index' => 'M21 21l-4.35-4.35M11 19a8 8 0 1 0 0-16 8 8 0 0 0 0 16z',
+        'reports.index' => 'M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8zM14 2v6h6M16 13H8M16 17H8M10 9H8',
         'users.index' => 'M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-8 10v-1a6 6 0 0 1 6-6h4a6 6 0 0 1 6 6v1',
         'organization.edit' => 'M3 21h18M5 21V7l7-4 7 4v14M9 21v-5h6v5M9 11h.01M15 11h.01',
         'reference-data.index' => 'M4 6h16M4 12h16M4 18h10',

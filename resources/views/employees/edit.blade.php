@@ -9,6 +9,7 @@
         subtitle="{{ $employee->fullName() }} ({{ $employee->employee_no }})"
         :back="route('employees.index')" back-label="Employees">
         <x-slot:actions>
+            <a href="{{ route('employees.payroll-history', $employee) }}" class="btn btn-secondary"><x-icon name="history" />Payroll history</a>
             <a href="{{ route('employees.compensation.index', $employee) }}" class="btn btn-secondary"><x-icon name="wallet" />Compensation</a>
         </x-slot:actions>
     </x-page-header>

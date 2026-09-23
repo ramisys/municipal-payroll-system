@@ -70,6 +70,7 @@
                     <td><x-status-badge :value="$employee->is_active ? 'ACTIVE' : 'DEACTIVATED'" /></td>
                     <td class="actions">
                         <div class="flex items-center gap-1">
+                            <a href="{{ route('employees.payroll-history', $employee) }}" class="btn btn-ghost btn-sm"><x-icon name="history" />History</a>
                             <a href="{{ route('employees.edit', $employee) }}" class="btn btn-ghost btn-sm"><x-icon name="pencil" />Edit</a>
                             <a href="{{ route('employees.compensation.index', $employee) }}" class="btn btn-ghost btn-sm"><x-icon name="wallet" />Compensation</a>
                             @if ($employee->is_active)

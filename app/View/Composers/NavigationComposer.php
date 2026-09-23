@@ -37,6 +37,7 @@ class NavigationComposer
                 'attendance' => $this->authorizationService->can($user, 'attendance.import'),
                 'payrollRuns' => $this->authorizationService->can($user, 'payroll_run.create_import'),
                 'payrollRecords' => $this->authorizationService->can($user, 'payroll_records.search'),
+                'reports' => $this->authorizationService->can($user, 'reports.generate'),
                 'users' => $this->authorizationService->can($user, 'users.manage'),
                 'auditLog' => $this->authorizationService->can($user, 'audit_log.view'),
                 'organization' => $this->authorizationService->can($user, 'organization.manage'),

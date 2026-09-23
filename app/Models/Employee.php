@@ -92,6 +92,14 @@ class Employee extends Model
         return $this->hasMany(RecurringDeduction::class, 'employee_id', 'employee_id');
     }
 
+    /**
+     * @return HasMany<PayrollLine, $this>
+     */
+    public function payrollLines(): HasMany
+    {
+        return $this->hasMany(PayrollLine::class, 'employee_id', 'employee_id');
+    }
+
     public function fullName(): string
     {
         $middle = $this->middle_name !== null && $this->middle_name !== '' ? " {$this->middle_name} " : ' ';

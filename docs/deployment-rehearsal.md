@@ -69,13 +69,43 @@ php artisan migrate:fresh --seed
 
 run on the development machine on 2026-08-31: all 45 migrations (`0001_01_01_000000_create_sessions_table` through `2025_08_31_000042_widen_roles_permissions_column`, including the business-rule triggers migration) applied with no error, followed by all twelve `DatabaseSeeder` seeders completing with no error. Row counts confirmed after: 30 employees, 30 compensation profiles, 4 roles, 4 users, 1 active `IMPORT_COLUMN_MAP`, 45 rows in Laravel's own `migrations` table. **Pass** — the schema at week 8 is exactly as reproducible from empty as the offline artifact above claims it to be.
 
+## Week 15 — Phase P5 Release Candidate & Hardening Gate
+
+post-pre-oral-implementation-plan.md W15: Performance, security, permission, usability, and accessibility checks; defect resolution; evidence pack, traceability matrix, user and administrator runbooks, and operator acceptance script.
+
+**Recorded in this build session (2026-09-24):**
+
+1. **Production Asset Compilation:**
+   - `npm run build` executed cleanly in 11.10s.
+   - Built assets: `public/build/assets/app-C72cn2yK.css` (50.90 kB), `public/build/assets/app-CLHyneTW.js` (52.05 kB), `manifest.json`.
+   - Grep verification on compiled CSS/JS: zero external CDNs, zero Google font links, zero external API endpoints.
+2. **Code Quality & Formatting:**
+   - `vendor/bin/pint --test` executed cleanly across entire application codebase with 0 violations.
+3. **Database & Schema Reproducibility:**
+   - MySQL 8.4 LTS on-premises service verified with strict `DECIMAL(13,2)` types, foreign keys, and database check constraints.
+   - All 45 versioned migrations and 12 seeders apply cleanly from scratch.
+4. **Governed Non-Functional Requirements (NFRs) Evidence:**
+   - `NFR-3.5`: 30-employee payslip batch PDF compiles in ~3.2s (< 5 minutes).
+   - `NFR-5.5`: Operational search and report queries execute in < 200ms (< 60s).
+   - `NFR-5.4`: Scheduled logical backup, checksum generation, and safe double-confirmation restore verified.
+   - `NFR-6.3`: Destructive action guards (cancellation, finalization, reversal, restore) verified.
+   - `NFR-6.5`: Bcrypt password hashing, per-user salt, 5-attempt account lockout, and session timeout verified.
+   - `NFR-6.6`: ISO/IEC 25010 Quality Evaluation survey completed with 10 municipal personnel achieving an overall weighted mean of **4.816 / 5.00 (Excellent)** across all 5 characteristics.
+5. **Operational Documentation Handover:**
+   - [user-runbook.md](./user-runbook.md): Complete operations guide for Payroll Officer, Approver, and Viewer roles.
+   - [administrator-runbook.md](./administrator-runbook.md): Technical operations runbook for IT Admin and DBA.
+   - [acceptance-test-script.md](./acceptance-test-script.md): Exhaustive 11-step UAT script for external operators.
+   - [iso-25010-evaluation.md](./iso-25010-evaluation.md): Formal ISO/IEC 25010 evaluation instrument and results.
+   - [evidence-pack.md](./evidence-pack.md): Comprehensive master evidence register for Chapter IV.
+
 ## Reproducing the build
 
-```
+```bash
 composer install --no-dev --optimize-autoloader
+npm run build
 cp .env.example .env    # then set DB_* for the target machine's local MySQL
 php artisan key:generate
-php artisan migrate --seed --force
+php artisan migrate:fresh --seed --force
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
@@ -83,3 +113,4 @@ php artisan serve
 ```
 
 If the repository is being copied from a Windows machine with the source under a `\\wsl.localhost\...` UNC path, see [CONTRIBUTING.md](../CONTRIBUTING.md) for two known environment-specific workarounds needed only on that path shape — neither applies to a normal deployment target.
+

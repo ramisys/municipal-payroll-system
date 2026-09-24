@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 // data-model.md §4.6 — INTEGRITY_ANCHOR. Queued PENDING on finalize/reverse
 // (AC-4.5.5); ledger transmit is W14.
@@ -54,5 +55,13 @@ class IntegrityAnchor extends Model
     public function reversalRecord(): BelongsTo
     {
         return $this->belongsTo(ReversalRecord::class, 'reversal_record_id', 'reversal_record_id');
+    }
+
+    /**
+     * @return HasMany<IntegrityVerification, $this>
+     */
+    public function verifications(): HasMany
+    {
+        return $this->hasMany(IntegrityVerification::class, 'integrity_anchor_id', 'integrity_anchor_id');
     }
 }

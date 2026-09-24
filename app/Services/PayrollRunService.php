@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Employee;
+use App\Models\IntegrityAnchor;
 use App\Models\PayrollPeriod;
 use App\Models\PayrollRun;
 use App\Models\ReversalRecord;
@@ -253,7 +254,9 @@ class PayrollRunService
             );
         }
 
-        return DB::transaction(function () use ($run, $actorUserId) {
+        $anchor = null;
+
+        $finalizedRun = DB::transaction(function () use ($run, $actorUserId, &$anchor) {
             $currentImport = $run->currentImport();
             $lines = $run->lines()->where('payroll_import_id', $currentImport?->payroll_import_id)->get();
 
@@ -289,10 +292,22 @@ class PayrollRunService
 
             // AC-4.5.5 / AC-6.3.1 / BR-36 — queue integrity anchor in same transaction.
             $integrity = $this->integrityService ?? app(IntegrityService::class);
-            $integrity->queueRunAnchor($run, $actorUserId);
+            $anchor = $integrity->queueRunAnchor($run, $actorUserId);
 
             return $run;
         });
+
+        // UC-I6 / AC-6.3.5 / AD-12 — Asynchronous outbox transmission after transaction commit.
+        // A ledger outage or latency NEVER fails or delays the finalize action.
+        if ($anchor) {
+            try {
+                app(LedgerAnchorService::class)->transmitAnchor($anchor);
+            } catch (\Throwable) {
+                // Outbox survives outages; retried via integrity:process-outbox (AC-6.3.5)
+            }
+        }
+
+        return $finalizedRun;
     }
 
     /**
@@ -325,7 +340,9 @@ class PayrollRunService
             );
         }
 
-        return DB::transaction(function () use ($run, $cleanReason, $actorUserId) {
+        $reversalRecordId = null;
+
+        $reversedRun = DB::transaction(function () use ($run, $cleanReason, $actorUserId, &$reversalRecordId) {
             $now = now();
 
             $reversalRecord = ReversalRecord::create([
@@ -339,6 +356,8 @@ class PayrollRunService
                 'created_by' => $actorUserId,
                 'updated_by' => $actorUserId,
             ]);
+
+            $reversalRecordId = $reversalRecord->reversal_record_id;
 
             $run->run_status = 'DRAFT';
             $run->finalized_at = null;
@@ -366,6 +385,24 @@ class PayrollRunService
 
             return $run;
         });
+
+        // UC-I6 / AC-6.3.5 / AD-12 — Asynchronous outbox transmission for reversal
+        if ($reversalRecordId !== null) {
+            try {
+                $anchor = IntegrityAnchor::query()
+                    ->where('scope_type', 'REVERSAL')
+                    ->where('reversal_record_id', $reversalRecordId)
+                    ->where('anchor_status', 'PENDING')
+                    ->first();
+                if ($anchor) {
+                    app(LedgerAnchorService::class)->transmitAnchor($anchor);
+                }
+            } catch (\Throwable) {
+                // Outbox survives outages (AC-6.3.5)
+            }
+        }
+
+        return $reversedRun;
     }
 
     // UC-17 A2 — Draft only (E4); a run past Draft is returned (UC-24) or

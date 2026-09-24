@@ -215,7 +215,13 @@ Route::middleware(['auth', 'session.idle', 'password.changed'])->group(function 
 
     // UC-31 · Verify payroll record integrity — FR-6.3 ('integrity.verify').
     Route::get('/integrity', [IntegrityVerificationController::class, 'index'])->name('integrity.index');
+    Route::post('/integrity/outbox/process', [IntegrityVerificationController::class, 'processOutbox'])->name('integrity.outbox.process');
+    Route::post('/integrity/audit-chain/verify', [IntegrityVerificationController::class, 'verifyAuditChain'])->name('integrity.audit-chain.verify');
+    Route::post('/integrity/period/{payrollPeriod}/verify', [IntegrityVerificationController::class, 'verifyPeriod'])->name('integrity.period.verify');
     Route::post('/integrity/verify/{payrollRun}', [IntegrityVerificationController::class, 'verify'])->name('integrity.verify-run');
     Route::post('/integrity/{payrollRun}/verify', [IntegrityVerificationController::class, 'verify']);
     Route::get('/integrity/{payrollRun}', [IntegrityVerificationController::class, 'show'])->name('integrity.show');
+    Route::get('/integrity/reversals/{reversalRecord}', [IntegrityVerificationController::class, 'showReversal'])->name('integrity.reversals.show');
+    Route::post('/integrity/reversals/{reversalRecord}/verify', [IntegrityVerificationController::class, 'verifyReversal'])->name('integrity.reversals.verify');
+    Route::get('/integrity/verifications/{verification}/pdf', [IntegrityVerificationController::class, 'exportPdf'])->name('integrity.verifications.pdf');
 });

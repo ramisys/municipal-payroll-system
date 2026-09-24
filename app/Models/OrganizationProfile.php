@@ -22,4 +22,9 @@ class OrganizationProfile extends Model
         'created_by',
         'updated_by',
     ];
+
+    public static function current(): ?self
+    {
+        return static::query()->first();
+    }
 }
